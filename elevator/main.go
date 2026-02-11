@@ -1,6 +1,6 @@
 package main
 
-import "Driver-go/elevio"
+import "heislab-sanntid/elevator/elevio"
 import "fmt"
 
 func main(){
