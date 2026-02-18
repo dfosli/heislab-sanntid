@@ -8,4 +8,5 @@ const (
 	N_ELEVATORS = 3
 
 	DOOR_OPEN_TIME = 3 * time.Second
+	STUCK_TIME = 5 * time.Second
 )
