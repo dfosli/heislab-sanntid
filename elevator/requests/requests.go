@@ -109,7 +109,7 @@ func RequestsShouldClearImmediately(e elev_struct.Elevator, btnFloor int, btnTyp
 		btnType == elevio.BT_Cab)
 }
 
-func RequestsClearAtCurrentFloor(e elev_struct.Elevator) elev_struct.Elevator {
+func RequestsClearAtCurrentFloor(e elev_struct.Elevator, clear_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
 	e.Requests[e.Floor][elevio.BT_Cab] = false
 
 	//TODO: sende på en channel at bestillingen er utført. Kanskje lurt å da legge inn ekstra sjekk for om bestilling fortsatt eksisterer før det sendes på channel

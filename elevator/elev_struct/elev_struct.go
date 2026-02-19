@@ -11,6 +11,7 @@ const (
 )
 
 type State int
+type Stuck bool
 
 const (
 	Idle State = iota
@@ -26,6 +27,7 @@ type Elevator struct {
 	Dir      elevio.MotorDirection
 	Requests Requests
 	ID       int
+	Stuck    Stuck
 }
 
 type DirStatePair struct {
@@ -39,6 +41,7 @@ func ElevatorInit(id int) Elevator {
 		Floor: -1,
 		Dir:   elevio.MD_Stop,
 		ID:    id,
+		Stuck: false,
 	}
 }
 
