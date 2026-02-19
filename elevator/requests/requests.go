@@ -112,17 +112,28 @@ func RequestsShouldClearImmediately(e elev_struct.Elevator, btnFloor int, btnTyp
 func RequestsClearAtCurrentFloor(e elev_struct.Elevator, clear_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
 	e.Requests[e.Floor][elevio.BT_Cab] = false
 
-	//TODO: sende på en channel at bestillingen er utført. Kanskje lurt å da legge inn ekstra sjekk for om bestilling fortsatt eksisterer før det sendes på channel
 	switch e.Dir {
 	case elevio.MD_Up:
 		if !RequestsAbove(e) && !e.Requests[e.Floor][elevio.BT_HallUp] {
+			if e.Requests[e.Floor][elevio.BT_HallDown] {
+				clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
+			}
 			e.Requests[e.Floor][elevio.BT_HallDown] = false
+		}
+		if e.Requests[e.Floor][elevio.BT_HallUp] {
+			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
 		}
 		e.Requests[e.Floor][elevio.BT_HallUp] = false
 
 	case elevio.MD_Down:
 		if !RequestsBelow(e) && !e.Requests[e.Floor][elevio.BT_HallDown] {
+			if e.Requests[e.Floor][elevio.BT_HallUp] {
+				clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
+			}
 			e.Requests[e.Floor][elevio.BT_HallUp] = false
+		}
+		if e.Requests[e.Floor][elevio.BT_HallDown] {
+			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
 		}
 		e.Requests[e.Floor][elevio.BT_HallDown] = false
 
@@ -130,6 +141,12 @@ func RequestsClearAtCurrentFloor(e elev_struct.Elevator, clear_order_chan chan<-
 		fallthrough
 
 	default:
+		if e.Requests[e.Floor][elevio.BT_HallUp] {
+			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
+		}
+		if e.Requests[e.Floor][elevio.BT_HallDown] {
+			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
+		}
 		e.Requests[e.Floor][elevio.BT_HallUp] = false
 		e.Requests[e.Floor][elevio.BT_HallDown] = false
 	}

@@ -3,10 +3,12 @@ package config
 import "time"
 
 const (
-	N_FLOORS = 4
-	N_BUTTONS = 3
-	N_ELEVATORS = 3
+	N_FLOORS    int = 4
+	N_BUTTONS   int = 3
+	N_ELEVATORS int = 3
 
-	DOOR_OPEN_TIME = 3 * time.Second
-	STUCK_TIME = 5 * time.Second
+	DOOR_OPEN_TIME time.Duration = 3 * time.Second
+	STUCK_TIME     time.Duration = 5 * time.Second
+
+	BUFFER_SIZE int = 10
 )
