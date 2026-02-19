@@ -51,7 +51,7 @@ func ClearHallOrders(e Elevator) Elevator {
 
 	for f := 0; f < N_FLOORS; f++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
-			e.Requests[f][btn] = false
+			localElevator.Requests[f][btn] = false
 		}
 	}
 	return localElevator
