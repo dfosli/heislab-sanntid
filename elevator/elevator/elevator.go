@@ -43,6 +43,9 @@ func RunElevator(
 		case btnEvent := <-drv_buttons_chan: //TODO: lage kopi og sende på out channel. Assigne til seg selv hvis cab order.
 			assigned_orders_chan <- btnEvent //assigner alle til seg selv siden distribution ikke er implementert
 
+		case btnEvent := <-assigned_orders_chan:
+			elevator = fsm.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, clear_order_chan)
+
 		case newFloor := <-drv_floors_chan:
 			elevator = fsm.OnFloorArrival(elevator, newFloor, doorTimer, clear_order_chan)
 			stuckTimer.Reset(STUCK_TIME)
@@ -50,11 +53,11 @@ func RunElevator(
 				elevator.Stuck = false
 			}
 
-		case obstr := <-drv_obstr_chan:
-			if obstr {
+		case obstructionSwitch := <-drv_obstr_chan:
+			if obstructionSwitch {
 				fsm.OnObstruction(elevator, doorTimer)
 				elevator.Obstructed = true
-			} else if !obstr && elevator.Obstructed {
+			} else if !obstructionSwitch && elevator.Obstructed {
 				elevator.Obstructed = false
 			}
 
@@ -71,9 +74,6 @@ func RunElevator(
 				elevator = elev_struct.ClearHallOrders(elevator)
 				log.Printf("stuck timer case")
 			}
-
-		case btnEvent := <-assigned_orders_chan:
-			elevator = fsm.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, clear_order_chan)
 
 		default:
 			elev_out_chan <- elevator

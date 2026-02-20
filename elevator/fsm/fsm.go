@@ -13,6 +13,14 @@ const (
 	STUCK_TIME = config.STUCK_TIME
 )
 
+func SetAllLights(e elev_struct.Elevator) {
+	for f := 0; f < config.N_FLOORS; f++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
+			elevio.SetButtonLamp(elevio.ButtonType(btn), f, e.Requests[f][btn])
+		}
+	}
+}
+
 func OnInitBetweenFloors(e elev_struct.Elevator) elev_struct.Elevator {
 	localElevator := e
 	elevio.SetMotorDirection(elevio.MD_Down)
@@ -79,10 +87,10 @@ func OnFloorArrival(e elev_struct.Elevator, newFloor int, doorTimer *time.Timer,
 		if requests.RequestsShouldStop(localElevator) {
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
+			localElevator.State = elev_struct.DoorOpen
 			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, clear_order_chan)
 			doorTimer.Reset(DOOR_OPEN_TIME)
 			elev_struct.SetCabLights(localElevator)
-			localElevator.State = elev_struct.DoorOpen
 		}
 	}
 
