@@ -1,8 +1,11 @@
 package network
-
-import "Network-go/network/localip
-	fmt
-	flag"
+	
+import (
+	"fmt"
+	"Network-go/network/localip"
+	"os"
+	"flag"
+)
 
 func NetworkInit() {
 
@@ -21,7 +24,7 @@ func NetworkInit() {
 }
 
 func NetworkSend(struct) {
-
+	
 }
 
 func NetworkRecive() struct {
