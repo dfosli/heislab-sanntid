@@ -1,9 +1,9 @@
 package elevator
 
 import (
+	elevio "Driver-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/elevator/elevio"
 	"heislab-sanntid/elevator/fsm"
 	"log"
 	"time"

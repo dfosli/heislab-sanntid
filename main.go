@@ -1,11 +1,11 @@
 package main
 
 import (
+	elevio "Driver-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/elevator"
-	"heislab-sanntid/elevator/elevio"
-    "time"
+	"time"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 	go func() { //black hole for channels, channels blocker programmet hvis ingen leser fra dem
 		for {
 			select {
-			case e :=<-elev_out:
+			case e := <-elev_out:
 				for f := 0; f < config.N_FLOORS; f++ { //setter alle lys her, kun for simulatoren
 					for btn := 0; btn < config.N_BUTTONS; btn++ {
 						elevio.SetButtonLamp(elevio.ButtonType(btn), f, e.Requests[f][btn])

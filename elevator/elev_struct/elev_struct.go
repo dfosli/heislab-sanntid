@@ -1,8 +1,8 @@
 package elev_struct
 
 import (
+	elevio "Driver-go"
 	"heislab-sanntid/config"
-	"heislab-sanntid/elevator/elevio"
 )
 
 const (
@@ -21,12 +21,12 @@ const (
 type Requests [N_FLOORS][N_BUTTONS]bool
 
 type Elevator struct {
-	State    State
-	Floor    int
-	Dir      elevio.MotorDirection
-	Requests Requests
-	ID       int
-	Stuck    bool
+	State      State
+	Floor      int
+	Dir        elevio.MotorDirection
+	Requests   Requests
+	ID         int
+	Stuck      bool
 	Obstructed bool
 }
 
@@ -37,11 +37,11 @@ type DirStatePair struct {
 
 func ElevatorInit(id int) Elevator {
 	return Elevator{
-		State: Idle,
-		Floor: -1,
-		Dir:   elevio.MD_Stop,
-		ID:    id,
-		Stuck: false,
+		State:      Idle,
+		Floor:      -1,
+		Dir:        elevio.MD_Stop,
+		ID:         id,
+		Stuck:      false,
 		Obstructed: false,
 	}
 }

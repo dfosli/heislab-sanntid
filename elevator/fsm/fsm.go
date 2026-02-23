@@ -1,16 +1,16 @@
 package fsm
 
 import (
+	elevio "Driver-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/elevator/elevio"
 	"heislab-sanntid/elevator/requests"
 	"time"
 )
 
 const (
 	DOOR_OPEN_TIME = config.DOOR_OPEN_TIME
-	STUCK_TIME = config.STUCK_TIME
+	STUCK_TIME     = config.STUCK_TIME
 )
 
 func SetAllLights(e elev_struct.Elevator) {
@@ -82,7 +82,7 @@ func OnFloorArrival(e elev_struct.Elevator, newFloor int, doorTimer *time.Timer,
 	localElevator.Floor = newFloor
 	elevio.SetFloorIndicator(localElevator.Floor)
 
-	switch localElevator.State{
+	switch localElevator.State {
 	case elev_struct.Moving:
 		if requests.RequestsShouldStop(localElevator) {
 			elevio.SetMotorDirection(elevio.MD_Stop)

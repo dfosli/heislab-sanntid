@@ -3,7 +3,7 @@ package requests
 import (
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/elevator/elevio"
+	"Driver-go"
 )
 
 const (
