@@ -1,4 +1,4 @@
-package main
+package network
 
 import (
 	"Network-go/network/bcast"
@@ -18,7 +18,7 @@ type HelloMsg struct {
 	Iter    int
 }
 
-func main() {
+func test() {
 	// Our id can be anything. Here we pass it on the command line, using
 	//  `go run main.go -id=our_id`
 	var id string

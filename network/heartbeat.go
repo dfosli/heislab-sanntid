@@ -2,7 +2,7 @@ package network
 
 import (
 	"time"
-
+	"fmt"
 	"Network-go/network/bcast"
 )
 
@@ -39,6 +39,7 @@ func (heartBeat *HeartbeatManager) receiver() {
 			case a := <-helloRx:
 			fmt.Printf("Received: %#v\n", a)
 		}
+	}
 }
 
 func (heartBeat *HeartbeatManager) Heartbeatstart() {
