@@ -2,16 +2,35 @@ package main
 
 import (
 	elevio "Driver-go"
+	"Network-go/network/localip"
+	"flag"
+	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/elevator"
+	"os"
 	"time"
 )
 
 func main() {
 
+	var id string
+	flag.StringVar(&id, "id", "", "id of this peer")
+	flag.Parse()
+
+	// ... or alternatively, we can use the local IP address.
+	// (But since we can run multiple programs on the same PC, we also append the
+	//  process ID)
+	if id == "" {
+		localIP, err := localip.LocalIP()
+		if err != nil {
+			fmt.Println(err)
+			localIP = "DISCONNECTED"
+		}
+		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	}
+
 	elevio.Init("localhost:15657", config.N_FLOORS)
-	id := 0 //TODO: få id fra -id flag i kommando elns
 
 	// Driver
 	drv_buttons := make(chan elevio.ButtonEvent)
