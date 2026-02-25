@@ -28,8 +28,16 @@ func RunElevator(
 
 	elevator := elev_struct.ElevatorInit(id)
 	elevator.Floor = elevio.GetFloor()
+
 	if elevator.Floor == -1 {
-		state_machine.OnInitBetweenFloors(elevator)
+		elevio.SetMotorDirection(elevio.MD_Down)
+		for {
+			floor := elevio.GetFloor()
+			if floor != -1 {
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				break
+			}
+		}
 	}
 
 	doorTimer := time.NewTimer(DOOR_OPEN_TIME)
