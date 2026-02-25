@@ -4,7 +4,7 @@ import (
 	elevio "Driver-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/elevator/fsm"
+	"heislab-sanntid/elevator/state_machine"
 	"log"
 	"time"
 )
@@ -13,7 +13,7 @@ const (
 	N_FLOORS       int = config.N_FLOORS
 	N_BUTTONS      int = config.N_BUTTONS
 	DOOR_OPEN_TIME     = config.DOOR_OPEN_TIME
-	STUCK_TIME         = config.STUCK_TIME
+	STALL_TIME         = config.STALL_TIME
 )
 
 func RunElevator(
@@ -28,12 +28,12 @@ func RunElevator(
 
 	elevator := elev_struct.ElevatorInit(id)
 	elevator.Floor = elevio.GetFloor()
-	if elevator.Floor == -1 { //? Mulig å loope helt til man treffer en floor i stedet
-		fsm.OnInitBetweenFloors(elevator)
+	if elevator.Floor == -1 {
+		state_machine.OnInitBetweenFloors(elevator)
 	}
 
 	doorTimer := time.NewTimer(DOOR_OPEN_TIME)
-	stuckTimer := time.NewTimer(STUCK_TIME)
+	stuckTimer := time.NewTimer(STALL_TIME)
 
 	for {
 		select {
@@ -44,26 +44,26 @@ func RunElevator(
 			assigned_orders_chan <- btnEvent //assigner alle til seg selv siden distribution ikke er implementert
 
 		case btnEvent := <-assigned_orders_chan:
-			elevator = fsm.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, clear_order_chan)
+			elevator = state_machine.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, clear_order_chan)
 
 		case newFloor := <-drv_floors_chan:
-			elevator = fsm.OnFloorArrival(elevator, newFloor, doorTimer, clear_order_chan)
-			stuckTimer.Reset(STUCK_TIME)
+			elevator = state_machine.OnFloorArrival(elevator, newFloor, doorTimer, clear_order_chan)
+			stuckTimer.Reset(STALL_TIME)
 			if elevator.Stuck {
 				elevator.Stuck = false
 			}
 
 		case obstructionSwitch := <-drv_obstr_chan:
 			if obstructionSwitch {
-				fsm.OnObstruction(elevator, doorTimer)
+				state_machine.OnObstruction(elevator, doorTimer)
 				elevator.Obstructed = true
 			} else if !obstructionSwitch && elevator.Obstructed {
 				elevator.Obstructed = false
 			}
 
 		case <-doorTimer.C:
-			elevator = fsm.OnDoorTimeout(elevator, doorTimer, clear_order_chan)
-			stuckTimer.Reset(STUCK_TIME)
+			elevator = state_machine.OnDoorTimeout(elevator, doorTimer, clear_order_chan)
+			stuckTimer.Reset(STALL_TIME)
 			if elevator.Stuck {
 				elevator.Stuck = false
 			}
@@ -79,7 +79,7 @@ func RunElevator(
 			elev_out_chan <- elevator
 
 			if elevator.Obstructed {
-				fsm.OnObstruction(elevator, doorTimer)
+				state_machine.OnObstruction(elevator, doorTimer)
 			}
 		}
 	}

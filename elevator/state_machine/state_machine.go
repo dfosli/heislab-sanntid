@@ -1,4 +1,4 @@
-package fsm
+package state_machine
 
 import (
 	elevio "Driver-go"
@@ -10,7 +10,7 @@ import (
 
 const (
 	DOOR_OPEN_TIME = config.DOOR_OPEN_TIME
-	STUCK_TIME     = config.STUCK_TIME
+	STALL_TIME     = config.STALL_TIME
 )
 
 func SetAllLights(e elev_struct.Elevator) {
@@ -44,7 +44,7 @@ func OnRequestButtonPress(
 		if requests.RequestsShouldClearImmediately(localElevator, btnFloor, btnType) {
 			clear_order_chan <- elevio.ButtonEvent{Floor: btnFloor, Button: btnType}
 			doorTimer.Reset(DOOR_OPEN_TIME)
-			stuckTimer.Reset(STUCK_TIME)
+			stuckTimer.Reset(STALL_TIME)
 		} else {
 			localElevator.Requests[btnFloor][btnType] = true
 		}
@@ -61,12 +61,12 @@ func OnRequestButtonPress(
 		case elev_struct.DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			doorTimer.Reset(DOOR_OPEN_TIME)
-			stuckTimer.Reset(STUCK_TIME)
+			stuckTimer.Reset(STALL_TIME)
 			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, clear_order_chan)
 
 		case elev_struct.Moving:
 			elevio.SetMotorDirection(localElevator.Dir)
-			stuckTimer.Reset(STUCK_TIME)
+			stuckTimer.Reset(STALL_TIME)
 
 		case elev_struct.Idle:
 		}
