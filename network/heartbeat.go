@@ -2,7 +2,6 @@ package network
 
 import (
 	"time"
-
 	"Network-go/network/bcast"
 )
 
@@ -18,11 +17,18 @@ type HeartBeat struct {
 
 func HeartbeatInit(id string, peerAddrs []string, heartbeatInterval time.Duration) (*HeartbeatManager, error) {
 
+
+
 	return &HeartbeatManager{
 		id: id,
 		heartbeatInterval: heartbeatInterval,
 	}, nil
 
+}
+
+func (heartBeat *HeartbeatManager) Heartbeatstart() {
+	go heartBeat.receiver()
+	go heartBeat.sender()
 }
 
 func (heartBeat *HeartbeatManager) sender() {
@@ -41,7 +47,4 @@ func (heartBeat *HeartbeatManager) receiver() {
 		}
 }
 
-func (heartBeat *HeartbeatManager) Heartbeatstart() {
-	go heartBeat.receiver()
-	go heartBeat.sender()
-}
+
