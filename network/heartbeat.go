@@ -1,13 +1,15 @@
 package network
 
 import (
+	"fmt"
 	"time"
+
 	"Network-go/network/bcast"
 )
 
 // Create channel for each peer. Mutex to lock the list of channels.
 type HeartbeatManager struct {
-	id string
+	id                string
 	heartbeatInterval time.Duration
 }
 
@@ -17,10 +19,8 @@ type HeartBeat struct {
 
 func HeartbeatInit(id string, peerAddrs []string, heartbeatInterval time.Duration) (*HeartbeatManager, error) {
 
-
-
 	return &HeartbeatManager{
-		id: id,
+		id:                id,
 		heartbeatInterval: heartbeatInterval,
 	}, nil
 
@@ -41,10 +41,9 @@ func (heartBeat *HeartbeatManager) receiver() {
 	go bcast.Receiver(16569, helloRx)
 
 	for {
-		select {		
-			case a := <-helloRx:
+		select {
+		case a := <-helloRx:
 			fmt.Printf("Received: %#v\n", a)
 		}
+	}
 }
-
-
