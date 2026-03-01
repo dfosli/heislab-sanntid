@@ -13,21 +13,6 @@ const (
 	STALL_TIME     = config.STALL_TIME
 )
 
-func SetAllLights(e elev_struct.Elevator) {
-	for f := 0; f < config.N_FLOORS; f++ {
-		for btn := 0; btn < config.N_BUTTONS; btn++ {
-			elevio.SetButtonLamp(elevio.ButtonType(btn), f, e.Requests[f][btn])
-		}
-	}
-}
-
-func OnInitBetweenFloors(e elev_struct.Elevator) elev_struct.Elevator {
-	localElevator := e
-	elevio.SetMotorDirection(elevio.MD_Down)
-	localElevator.Dir = elevio.MD_Down
-	localElevator.State = elev_struct.Moving
-	return localElevator
-}
 
 func OnRequestButtonPress(
 	e elev_struct.Elevator,

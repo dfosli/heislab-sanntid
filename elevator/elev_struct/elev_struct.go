@@ -72,26 +72,3 @@ func SetCabLights(e Elevator) {
 	}
 }
 
-func StateToString(state State) string {
-	switch state {
-	case Idle:
-		return "idle"
-	case DoorOpen:
-		return "doorOpen"
-	case Moving:
-		return "moving"
-	}
-	return "INVALID STATE"
-}
-
-func MotorDirectionToString(dirn elevio.MotorDirection) string {
-	switch dirn {
-	case elevio.MD_Up:
-		return "up"
-	case elevio.MD_Down:
-		return "down"
-	case elevio.MD_Stop:
-		return "stop"
-	}
-	return "INVALID DIRECTION"
-}
