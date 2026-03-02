@@ -48,8 +48,15 @@ func RunElevator(
 		case <-clear_local_hall_orders_chan:
 			elevator = elev_struct.ClearHallOrders(elevator)
 
-		case btnEvent := <-drv_buttons_chan: //TODO: lage kopi og sende på out channel. Assigne til seg selv hvis cab order.
-			assigned_orders_chan <- btnEvent //assigner alle til seg selv siden distribution ikke er implementert
+		case btnEvent := <-drv_buttons_chan:
+			elevatorWithNewOrder := elevator
+			elevatorWithNewOrder.Requests[btnEvent.Floor][btnEvent.Button] = true
+
+			if btnEvent.Button == elevio.BT_Cab {
+				assigned_orders_chan <- btnEvent
+			}
+
+			elev_out_chan <- elevatorWithNewOrder
 
 		case btnEvent := <-assigned_orders_chan:
 			elevator = state_machine.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, completed_order_chan)
