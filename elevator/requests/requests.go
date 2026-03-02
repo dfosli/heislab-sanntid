@@ -1,9 +1,9 @@
 package requests
 
 import (
+	elevio "Driver-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	"Driver-go"
 )
 
 const (
@@ -109,31 +109,31 @@ func RequestsShouldClearImmediately(e elev_struct.Elevator, btnFloor int, btnTyp
 		btnType == elevio.BT_Cab)
 }
 
-func RequestsClearAtCurrentFloor(e elev_struct.Elevator, clear_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
+func RequestsClearAtCurrentFloor(e elev_struct.Elevator, completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
 	e.Requests[e.Floor][elevio.BT_Cab] = false
 
 	switch e.Dir {
 	case elevio.MD_Up:
 		if !RequestsAbove(e) && !e.Requests[e.Floor][elevio.BT_HallUp] {
 			if e.Requests[e.Floor][elevio.BT_HallDown] {
-				clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
+				completed_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
 			}
 			e.Requests[e.Floor][elevio.BT_HallDown] = false
 		}
 		if e.Requests[e.Floor][elevio.BT_HallUp] {
-			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
+			completed_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
 		}
 		e.Requests[e.Floor][elevio.BT_HallUp] = false
 
 	case elevio.MD_Down:
 		if !RequestsBelow(e) && !e.Requests[e.Floor][elevio.BT_HallDown] {
 			if e.Requests[e.Floor][elevio.BT_HallUp] {
-				clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
+				completed_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
 			}
 			e.Requests[e.Floor][elevio.BT_HallUp] = false
 		}
 		if e.Requests[e.Floor][elevio.BT_HallDown] {
-			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
+			completed_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
 		}
 		e.Requests[e.Floor][elevio.BT_HallDown] = false
 
@@ -142,10 +142,10 @@ func RequestsClearAtCurrentFloor(e elev_struct.Elevator, clear_order_chan chan<-
 
 	default:
 		if e.Requests[e.Floor][elevio.BT_HallUp] {
-			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
+			completed_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallUp}
 		}
 		if e.Requests[e.Floor][elevio.BT_HallDown] {
-			clear_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
+			completed_order_chan <- elevio.ButtonEvent{Floor: e.Floor, Button: elevio.BT_HallDown}
 		}
 		e.Requests[e.Floor][elevio.BT_HallUp] = false
 		e.Requests[e.Floor][elevio.BT_HallDown] = false

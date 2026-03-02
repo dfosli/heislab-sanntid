@@ -13,21 +13,20 @@ const (
 	STALL_TIME     = config.STALL_TIME
 )
 
-
 func OnRequestButtonPress(
 	e elev_struct.Elevator,
 	btnFloor int,
 	btnType elevio.ButtonType,
 	doorTimer *time.Timer,
 	stuckTimer *time.Timer,
-	clear_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
+	completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
 
 	localElevator := e
 
 	switch localElevator.State {
 	case elev_struct.DoorOpen:
 		if requests.RequestsShouldClearImmediately(localElevator, btnFloor, btnType) {
-			clear_order_chan <- elevio.ButtonEvent{Floor: btnFloor, Button: btnType}
+			completed_order_chan <- elevio.ButtonEvent{Floor: btnFloor, Button: btnType}
 			doorTimer.Reset(DOOR_OPEN_TIME)
 			stuckTimer.Reset(STALL_TIME)
 		} else {
@@ -47,7 +46,7 @@ func OnRequestButtonPress(
 			elevio.SetDoorOpenLamp(true)
 			doorTimer.Reset(DOOR_OPEN_TIME)
 			stuckTimer.Reset(STALL_TIME)
-			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, clear_order_chan)
+			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, completed_order_chan)
 
 		case elev_struct.Moving:
 			elevio.SetMotorDirection(localElevator.Dir)
@@ -62,7 +61,7 @@ func OnRequestButtonPress(
 	return localElevator
 }
 
-func OnFloorArrival(e elev_struct.Elevator, newFloor int, doorTimer *time.Timer, clear_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
+func OnFloorArrival(e elev_struct.Elevator, newFloor int, doorTimer *time.Timer, completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
 	localElevator := e
 	localElevator.Floor = newFloor
 	elevio.SetFloorIndicator(localElevator.Floor)
@@ -73,7 +72,7 @@ func OnFloorArrival(e elev_struct.Elevator, newFloor int, doorTimer *time.Timer,
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
 			localElevator.State = elev_struct.DoorOpen
-			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, clear_order_chan)
+			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, completed_order_chan)
 			doorTimer.Reset(DOOR_OPEN_TIME)
 			elev_struct.SetCabLights(localElevator)
 		}
@@ -82,7 +81,7 @@ func OnFloorArrival(e elev_struct.Elevator, newFloor int, doorTimer *time.Timer,
 	return localElevator
 }
 
-func OnDoorTimeout(e elev_struct.Elevator, doorTimer *time.Timer, clear_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
+func OnDoorTimeout(e elev_struct.Elevator, doorTimer *time.Timer, completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
 	localElevator := e
 
 	switch localElevator.State {
@@ -94,7 +93,7 @@ func OnDoorTimeout(e elev_struct.Elevator, doorTimer *time.Timer, clear_order_ch
 		switch localElevator.State {
 		case elev_struct.DoorOpen:
 			doorTimer.Reset(DOOR_OPEN_TIME)
-			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, clear_order_chan)
+			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, completed_order_chan)
 			elev_struct.SetCabLights(localElevator)
 
 		case elev_struct.Moving:

@@ -22,7 +22,7 @@ func RunElevator(
 	drv_floors_chan <-chan int,
 	drv_obstr_chan <-chan bool,
 	clear_local_hall_orders_chan <-chan bool,
-	clear_order_chan chan<- elevio.ButtonEvent,
+	completed_order_chan chan<- elevio.ButtonEvent,
 	assigned_orders_chan chan elevio.ButtonEvent,
 	elev_out_chan chan<- elev_struct.Elevator) {
 
@@ -52,10 +52,10 @@ func RunElevator(
 			assigned_orders_chan <- btnEvent //assigner alle til seg selv siden distribution ikke er implementert
 
 		case btnEvent := <-assigned_orders_chan:
-			elevator = state_machine.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, clear_order_chan)
+			elevator = state_machine.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, completed_order_chan)
 
 		case newFloor := <-drv_floors_chan:
-			elevator = state_machine.OnFloorArrival(elevator, newFloor, doorTimer, clear_order_chan)
+			elevator = state_machine.OnFloorArrival(elevator, newFloor, doorTimer, completed_order_chan)
 			stuckTimer.Reset(STALL_TIME)
 			if elevator.Stuck {
 				elevator.Stuck = false
@@ -70,7 +70,7 @@ func RunElevator(
 			}
 
 		case <-doorTimer.C:
-			elevator = state_machine.OnDoorTimeout(elevator, doorTimer, clear_order_chan)
+			elevator = state_machine.OnDoorTimeout(elevator, doorTimer, completed_order_chan)
 			stuckTimer.Reset(STALL_TIME)
 			if elevator.Stuck {
 				elevator.Stuck = false
