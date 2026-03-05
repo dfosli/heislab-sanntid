@@ -1,7 +1,17 @@
 package orders
 
-import "fmt"
+import (
+	"heislab-sanntid/config"
+)
 
-func main() {
-	fmt.Println("bingobernt")
-}
+type OrderState int
+
+const (
+	NONE OrderState = iota
+	NEW
+	CONFIRMED
+	ASSIGNED
+	COMPLETED
+)
+
+type HallOrders [config.N_FLOORS][config.N_BUTTONS]OrderState
