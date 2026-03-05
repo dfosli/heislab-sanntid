@@ -3,6 +3,7 @@ package distributor
 import (
 	"encoding/json"
 	"fmt"
+	"heislab-sanntid/elevator/elev_struct"
 	"os/exec"
 )
 
@@ -30,4 +31,31 @@ func CallDistributor(input any) ([]byte, error) {
 	}
 
 	return output, nil
+}
+
+
+//TODO: finish this function
+func formatInputForDistributor(hallOrders *HallOrders, activeElevators []int, allElevatorStates []elev_struct.Elevator) any {
+	/* input format for distributor looks like this:
+	{
+    "hallRequests" : 
+        [[Boolean, Boolean], ...],
+    "states" : 
+        {
+            "id_1" : {
+                "behaviour"     : < "idle" | "moving" | "doorOpen" >
+                "floor"         : NonNegativeInteger
+                "direction"     : < "up" | "down" | "stop" >
+                "cabRequests"   : [Boolean, ...]
+            },
+            "id_2" : {...}
+        }
+	}
+	*/
+	temporaryStruct = Struct{
+		//Fill in here
+	}
+	data, _ := json.MarshalIndent(p, "", "  ")
+	fmt.Println(string(data))
+	
 }

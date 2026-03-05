@@ -2,10 +2,7 @@ package orders
 
 import (
 	"heislab-sanntid/config"
-	"heislab-sanntid/distributor"
 )
-
-// functions
 
 func shouldUpdateLocalHallOrders(localHallOrders *HallOrders, allElevatorHallOrders *HallOrdersAllElevators) bool {
 	for elev := 0; elev < config.N_ELEVATORS; elev++ {
@@ -41,10 +38,12 @@ func addNewOrder(hallOrders *HallOrders, floor int, btn int) bool {
 	return false
 }
 
+//TODO: this function must be written after formatInputForDistributor is finished, since it relies on that function to format the input for the distributor.
+//with that function, this function is trivial
 //UnassignOrder: assigns orders all orders that are assigned to an elevator not in the ActiveElevators list back to NEW, so they can be assigned to active elevators instead.
 //will bi triggered by a change in the ActiveElevators list, and will return true if local hallOrders was updated, false if not.
-func reassignedOrders(hallOrders *HallOrders, activeElevators []int) HallOrders {
+func reassignedOrders(hallOrders *HallOrders, activeElevators []int, elevator_id int) HallOrders {
 	//TODO: format input so that it matches what distributor expects,
 	//  and removes inactive elevators from hallOrders object, so distributor only assigns to active elevators.
-	distributor.CallDistributor(hallOrders) 
+	//return distributor.CallDistributor(hallOrders)[elevator_id]
 }
