@@ -15,3 +15,22 @@ const (
 )
 
 type HallOrders [config.N_FLOORS][config.N_BUTTONS]OrderState
+
+
+func InitHallOrders() HallOrders{
+	var hallOrders HallOrders
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ {
+			hallOrders[floor][btn] = NONE
+		}
+	}
+	return hallOrders
+}
+
+func InitHallOrdersAllElevators() [config.N_ELEVATORS]HallOrders {
+	var allHallOrders [config.N_ELEVATORS]HallOrders
+	for elev := 0; elev < config.N_ELEVATORS; elev++ {
+		allHallOrders[elev] = InitHallOrders()
+	}
+	return allHallOrders
+}
