@@ -46,7 +46,7 @@ func RunElevator(
 	for {
 		select {
 		case <-clear_local_hall_orders_chan:
-			elevator = elev_struct.ClearHallOrders(elevator)
+			elevator = elev_struct.ClearLocalHallOrders(elevator)
 
 		case btnEvent := <-drv_buttons_chan:
 			elevatorWithNewOrder := elevator
@@ -86,7 +86,7 @@ func RunElevator(
 		case <-stuckTimer.C:
 			if elevator.State != elev_struct.Idle {
 				elevator.Stuck = true
-				elevator = elev_struct.ClearHallOrders(elevator)
+				elevator = elev_struct.ClearLocalHallOrders(elevator)
 				log.Printf("stuck timer case")
 			}
 

@@ -7,4 +7,5 @@ require (
 )
 
 replace Driver-go => ./elevator/elevio
+replace Network-go => ./network/network
 

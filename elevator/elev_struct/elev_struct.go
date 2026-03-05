@@ -35,6 +35,12 @@ type DirStatePair struct {
 	State State
 }
 
+type LightEvent struct {
+	Floor int
+	Button elevio.ButtonType
+	On bool
+}
+
 func ElevatorInit(id int) Elevator {
 	return Elevator{
 		State:      Idle,
@@ -46,7 +52,7 @@ func ElevatorInit(id int) Elevator {
 	}
 }
 
-func ClearHallOrders(e Elevator) Elevator {
+func ClearLocalHallOrders(e Elevator) Elevator {
 	localElevator := e
 
 	for f := 0; f < N_FLOORS; f++ {
@@ -71,4 +77,3 @@ func SetCabLights(e Elevator) {
 		elevio.SetButtonLamp(elevio.BT_Cab, f, e.Requests[f][elevio.BT_Cab])
 	}
 }
-
