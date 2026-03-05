@@ -14,7 +14,7 @@ const (
 	COMPLETED
 )
 
-type HallOrders [config.N_FLOORS][config.N_BUTTONS]OrderState
+type HallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
 
 
 func InitHallOrders() HallOrders{
