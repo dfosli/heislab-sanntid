@@ -1,6 +1,6 @@
 module heislab-sanntid
 
-go 1.16
+go 1.18
 
 require (
     Driver-go v0.0.0
