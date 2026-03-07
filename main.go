@@ -2,6 +2,7 @@ package main
 
 import (
 	elevio "Driver-go"
+	network "Network-go"
 	"Network-go/network/localip"
 	"flag"
 	"fmt"
@@ -29,6 +30,8 @@ func main() {
 		}
 		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	}
+
+	network.NetworkInit(id)
 
 	elevio.Init("localhost:15657", config.N_FLOORS)
 
