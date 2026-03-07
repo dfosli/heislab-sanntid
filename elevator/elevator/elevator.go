@@ -17,7 +17,7 @@ const (
 )
 
 func RunElevator(
-	id int,
+	id string,
 	drv_buttons_chan <-chan elevio.ButtonEvent,
 	drv_floors_chan <-chan int,
 	drv_obstr_chan <-chan bool,
