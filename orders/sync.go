@@ -3,6 +3,7 @@ package orders
 import (
 	"heislab-sanntid/config"
 )
+type HallOrdersAllElevators [config.N_ELEVATORS]HallOrders //only needed now because i have not merged into main yet.
 
 func shouldUpdateLocalHallOrders(localHallOrders *HallOrders, allElevatorHallOrders *HallOrdersAllElevators) bool {
 	for elev := 0; elev < config.N_ELEVATORS; elev++ {
