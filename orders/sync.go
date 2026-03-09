@@ -46,4 +46,5 @@ func reassignedOrders(hallOrders *HallOrders, activeElevators []int, elevator_id
 	//TODO: format input so that it matches what distributor expects,
 	//  and removes inactive elevators from hallOrders object, so distributor only assigns to active elevators.
 	//return distributor.CallDistributor(hallOrders)[elevator_id]
+	return *hallOrders //return just to not have error
 }

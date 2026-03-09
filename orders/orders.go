@@ -31,7 +31,7 @@ type ElevstateHallorderPair struct {
 func InitHallOrders() HallOrders {
 	var hallOrders HallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
-		for btn := 0; btn < config.N_BUTTONS; btn++ {
+		for btn := 0; btn < config.N_BUTTONS; btn++ { //må ikke disse for loopene også minkes med 1, for å fjerne cab
 			hallOrders[floor][btn] = NONE
 		}
 	}
