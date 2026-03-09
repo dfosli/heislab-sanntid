@@ -4,14 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/orders"
 	"os/exec"
 )
 
 func CallDistributor(input any) ([]byte, error) {
-	jsonData, err := json.Marshal(input)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error: %w", err)
+	var jsonData []byte
+	switch v := input.(type) {
+	case []byte:
+		jsonData = v
+	case json.RawMessage:
+		jsonData = v
+	default:
+		var err error
+		jsonData, err = json.Marshal(input)
+		if err != nil {
+			return nil, fmt.Errorf("marshal error: %w", err)
+		}
 	}
 
 	cmd := exec.Command("./distributor/hall_request_assigner.exe")
@@ -35,8 +43,8 @@ func CallDistributor(input any) ([]byte, error) {
 }
 
 
-//TODO: finish this function
-func formatInputForDistributor(hallOrders *orders.HallOrders, activeElevators []int, allElevatorStates []elev_struct.Elevator) any {
+
+func FormatInputForDistributor(hallRequests [][]bool, activeElevators []int, allElevatorStates []elev_struct.Elevator) any {
 	/* input format for distributor looks like this:
 	{
     "hallRequests" : 
@@ -57,15 +65,7 @@ func formatInputForDistributor(hallOrders *orders.HallOrders, activeElevators []
     	HallRequests [][]bool                 `json:"hallRequests"`
     	States       map[string]elev_struct.Elevator `json:"states"`
 	}	
-	hallRequests := make([][]bool, len(hallOrders))
-	for floor := 0; floor < len(hallOrders); floor++ {
-		hallRequests[floor] = make([]bool, len(hallOrders[floor]))
-		for btn := 0; btn < len(hallOrders[floor]); btn++ {
-			orderState := hallOrders[floor][btn]
-			hallRequests[floor][btn] = orderState != orders.NONE && orderState != orders.COMPLETED 
-		}
-	}
-	
+
 	states := make(map[string]elev_struct.Elevator, len(activeElevators))
 
 	for _, id := range activeElevators {
@@ -84,4 +84,21 @@ func formatInputForDistributor(hallOrders *orders.HallOrders, activeElevators []
 	data, _ := json.MarshalIndent(fullInput, "", "  ")
 	fmt.Println(string(data))
 	return data
+}
+func ParseDistributorOutput(output []byte) (map[string][][]bool, error) {
+    var assignments map[string][][]bool
+    if err := json.Unmarshal(output, &assignments); err != nil {
+        return nil, err
+    }
+    return assignments, nil
+}
+
+func HallOrdersForID(output []byte, id int) ([][]bool, bool, error) {
+    assignments, err := ParseDistributorOutput(output)
+    if err != nil {
+        return nil, false, err
+    }
+    hallOrders, ok := assignments[fmt.Sprintf("id_%d", id)]
+	
+    return hallOrders, ok, nil
 }
