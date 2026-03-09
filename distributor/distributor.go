@@ -8,9 +8,18 @@ import (
 )
 
 func CallDistributor(input any) ([]byte, error) {
-	jsonData, err := json.Marshal(input)
+	var jsonData []byte
+	switch v := input.(type) {
+	case []byte:
+		jsonData = v
+	case json.RawMessage:
+		jsonData = v
+	default:
+		var err error
+		jsonData, err = json.Marshal(input)
 	if err != nil {
 		return nil, fmt.Errorf("marshal error: %w", err)
+	}
 	}
 
 	cmd := exec.Command("./distributor/hall_request_assigner.exe")
