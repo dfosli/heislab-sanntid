@@ -181,8 +181,9 @@ func RunOrderManager(
 			//TODO: er stuck? har ny ordre?
 			//network.NetworkSend()
 
-		case stateOrderPair := <-networkRx:
+		case remoteElevator := <-networkRx:
 			//TODO: er stuck? har ny ordre?
+			//oppdatere allElevatorStates
 
 		case newCompletedOrder := <-completed_order_chan:
 			dataMutex.Lock()
