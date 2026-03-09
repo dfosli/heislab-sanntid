@@ -40,14 +40,29 @@ func addNewOrder(hallOrders *HallOrders, floor int, btn int) bool {
 	return false
 }
 
+func hallOrdersToBoolMatrix(hallOrders *HallOrders) [][]bool {
+	hallRequests := make([][]bool, len(hallOrders))
+	for floor := 0; floor < len(hallOrders); floor++ {
+		hallRequests[floor] = make([]bool, len(hallOrders[floor]))
+		for btn := 0; btn < len(hallOrders[floor]); btn++ {
+			state := hallOrders[floor][btn]
+			hallRequests[floor][btn] = state != NONE && state != COMPLETED
+		}
+	}
+	return hallRequests
+}
+
 
 func reassignedOrders(hallOrders *HallOrders, activeElevators []int,allElevatorStates []elev_struct.Elevator, elevator_id int) HallOrders {
-	formattedOrders := distributor.FormatInputForDistributor(hallOrders, activeElevators, allElevatorStates)
+	hallRequests := hallOrdersToBoolMatrix(hallOrders)
+	formattedOrders := distributor.FormatInputForDistributor(hallRequests, activeElevators, allElevatorStates)
 	output, err := distributor.CallDistributor(formattedOrders)
 	if err != nil {
 		return *hallOrders
 	}
 
+	_ = output
+	_ = elevator_id
 	//TODO: output must be parsed from json back to HallOrders struct
-	return output
+	return *hallOrders
 }

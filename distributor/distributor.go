@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/orders"
 	"os/exec"
 )
 
@@ -36,7 +35,7 @@ func CallDistributor(input any) ([]byte, error) {
 
 
 
-func FormatInputForDistributor(hallOrders *orders.HallOrders, activeElevators []int, allElevatorStates []elev_struct.Elevator) any {
+func FormatInputForDistributor(hallRequests [][]bool, activeElevators []int, allElevatorStates []elev_struct.Elevator) any {
 	/* input format for distributor looks like this:
 	{
     "hallRequests" : 
@@ -57,15 +56,7 @@ func FormatInputForDistributor(hallOrders *orders.HallOrders, activeElevators []
     	HallRequests [][]bool                 `json:"hallRequests"`
     	States       map[string]elev_struct.Elevator `json:"states"`
 	}	
-	hallRequests := make([][]bool, len(hallOrders))
-	for floor := 0; floor < len(hallOrders); floor++ {
-		hallRequests[floor] = make([]bool, len(hallOrders[floor]))
-		for btn := 0; btn < len(hallOrders[floor]); btn++ {
-			orderState := hallOrders[floor][btn]
-			hallRequests[floor][btn] = orderState != orders.NONE && orderState != orders.COMPLETED 
-		}
-	}
-	
+
 	states := make(map[string]elev_struct.Elevator, len(activeElevators))
 
 	for _, id := range activeElevators {
