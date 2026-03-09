@@ -53,16 +53,18 @@ func hallOrdersToBoolMatrix(hallOrders *HallOrders) [][]bool {
 }
 
 
-func reassignedOrders(hallOrders *HallOrders, activeElevators []int,allElevatorStates []elev_struct.Elevator, elevator_id int) HallOrders {
+func reassignedOrders(hallOrders *HallOrders, activeElevators []int,allElevatorStates []elev_struct.Elevator, elevator_id int) [][]bool {
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
 	formattedOrders := distributor.FormatInputForDistributor(hallRequests, activeElevators, allElevatorStates)
-	output, err := distributor.CallDistributor(formattedOrders)
+	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
 	if err != nil {
-		return *hallOrders
+		return nil
 	}
-
-	_ = output
+	hallOrderForID, _, err := distributor.HallOrdersForID(allReassignedHallOrders, elevator_id)
+	if err != nil {
+		return nil
+	}
 	_ = elevator_id
-	//TODO: output must be parsed from json back to HallOrders struct
-	return *hallOrders
+	
+	return hallOrderForID
 }
