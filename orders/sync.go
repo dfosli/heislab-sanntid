@@ -7,8 +7,7 @@ import (
 )
 
 func shouldUpdateLocalHallOrders(localHallOrders *HallOrders, allElevatorHallOrders *HallOrdersAllElevators) bool {
-	for elev := 0; elev < config.N_ELEVATORS; elev++ {
-		externalHallOrders := allElevatorHallOrders[elev]
+	for _, externalHallOrders := range *allElevatorHallOrders {
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS; btn++ {
 				if localHallOrders[floor][btn] == COMPLETED && externalHallOrders[floor][btn] == NONE {
