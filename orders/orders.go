@@ -147,7 +147,7 @@ func RunOrderManager(
 	var allHallOrders HallOrdersAllElevators = InitHallOrdersAllElevators(id)
 	var allElevatorStates = InitAllElevatorStates(id)
 	var availableElevators = make(map[string]bool)
-	availableElevators[id] = true //TODO: sett andre heiser? (Bør kanskje heller oppdatere denne basert på peer updates. DB)
+	availableElevators[id] = true
 	var dataMutex sync.RWMutex
 
 	order_confirmed_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
@@ -173,7 +173,7 @@ func RunOrderManager(
 
 			for _, lostPeer := range peerUpdate.Lost {
 				delete(availableElevators, lostPeer)
-				//TODO: unassigne alle ordre slik at de kan bli assigned til andre heiser. Sette alle dens ordre til NONE 
+				//TODO: unassigne alle ordre slik at de kan bli assigned til andre heiser. Sette alle dens ordre til NONE (med init funksjon)
 			}
 			dataMutex.Unlock()
 
@@ -196,11 +196,11 @@ func RunOrderManager(
 
 		case orderToConfirm := <-order_confirmed_chan:
 			dataMutex.Lock()
-			for elevID, isAvailable := range availableElevators {
+			for id, isAvailable := range availableElevators {
 				if isAvailable {
-					if orders, ok := allHallOrders[elevID]; ok {
+					if orders, ok := allHallOrders[id]; ok {
 						orders[orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
-						allHallOrders[elevID] = orders
+						allHallOrders[id] = orders
 					}
 				}
 			}
@@ -213,11 +213,11 @@ func RunOrderManager(
 
 		case orderToReset := <-order_reset_chan:
 			dataMutex.Lock()
-			for elevID, isAvailable := range availableElevators {
+			for id, isAvailable := range availableElevators {
 				if isAvailable {
-					if orders, ok := allHallOrders[elevID]; ok {
+					if orders, ok := allHallOrders[id]; ok {
 						orders[orderToReset.Floor][orderToReset.Button] = NONE
-						allHallOrders[elevID] = orders
+						allHallOrders[id] = orders
 					}
 				}
 			}
