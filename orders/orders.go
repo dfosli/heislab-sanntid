@@ -2,7 +2,7 @@ package orders
 
 import (
 	elevio "Driver-go"
-	"Network-go/network/peers"
+	network "Network-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 )
@@ -31,7 +31,7 @@ type ElevstateHallorderPair struct {
 func InitHallOrders() HallOrders {
 	var hallOrders HallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
-		for btn := 0; btn < config.N_BUTTONS; btn++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ { //må ikke disse for loopene også minkes med 1, for å fjerne cab
 			hallOrders[floor][btn] = NONE
 		}
 	}
@@ -58,12 +58,12 @@ func ConfirmHallOrders(
 	order_confirmed_chan chan<- elevio.ButtonEvent,
 	hall_light_chan chan<- elev_struct.LightEvent,
 	allHallOrders *HallOrdersAllElevators,
-	availibleElevators *[config.N_ELEVATORS]bool) {
+	availableElevators *[config.N_ELEVATORS]bool) {
 
 	for {
 		//sleep?
 		currentAllHallOrders := *allHallOrders
-		currentAvailibleElevators := *availibleElevators
+		currentavailableElevators := *availableElevators
 
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
@@ -71,7 +71,7 @@ func ConfirmHallOrders(
 				shouldConfirm := true
 
 				for elev := 0; elev < config.N_ELEVATORS; elev++ {
-					if currentAllHallOrders[elev][floor][btn] != NEW && currentAvailibleElevators[elev] {
+					if currentAllHallOrders[elev][floor][btn] != NEW && currentavailableElevators[elev] {
 						shouldConfirm = false
 						break
 					}
@@ -89,12 +89,12 @@ func ResetHallOrders(
 	order_reset_chan chan<- elevio.ButtonEvent,
 	hall_light_chan chan<- elev_struct.LightEvent,
 	allHallOrders *HallOrdersAllElevators,
-	availibleElevators *[config.N_ELEVATORS]bool) {
+	availableElevators *[config.N_ELEVATORS]bool) {
 
 	for {
 		//sleep?
 		currentAllHallOrders := *allHallOrders
-		currentAvailibleElevators := *availibleElevators
+		currentavailableElevators := *availableElevators
 
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
@@ -102,7 +102,7 @@ func ResetHallOrders(
 				shouldReset := true
 
 				for elev := 0; elev < config.N_ELEVATORS; elev++ {
-					if currentAllHallOrders[elev][floor][btn] != COMPLETED && currentAvailibleElevators[elev] {
+					if currentAllHallOrders[elev][floor][btn] != COMPLETED && currentavailableElevators[elev] {
 						shouldReset = false
 						break
 					}
@@ -117,50 +117,65 @@ func ResetHallOrders(
 }
 
 func RunOrderManager(
-	Id int,
+	id string,
 	local_elevator_chan <-chan elev_struct.Elevator,
 	assign_order_chan chan<- elevio.ButtonEvent,
 	completed_order_chan <-chan elevio.ButtonEvent,
 	clear_local_hall_orders_chan chan<- bool,
-	network_Tx chan<- ElevstateHallorderPair,
-	network_Rx <-chan ElevstateHallorderPair,
-	peer_update_chan <-chan peers.PeerUpdate) {
-	//mer parametre sikkert
+	// networkTx chan<- ElevstateHallorderPair,
+	// networkRx <-chan ElevstateHallorderPair,
+	//peer_update_chan <-chan peers.PeerUpdate
+) {
+	// Ikke accsess direkte til variabler fra network. DB
 
 	var allHallOrders HallOrdersAllElevators = InitHallOrdersAllElevators()
 	var allElevatorStates = InitAllElevatorStates()
-	var availibleElevators [config.N_ELEVATORS]bool
-	availibleElevators[Id] = true //TODO: sett andre heiser?
+	var availableElevators = make(map[string]bool)
+	availableElevators[id] = true //TODO: sett andre heiser? (Bør kanskje heller oppdatere denne basert på peer updates. DB)
 
 	order_confirmed_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 	order_reset_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 	hall_light_chan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
 
-	go ConfirmHallOrders(order_confirmed_chan, hall_light_chan, &allHallOrders, &availibleElevators)
-	go ResetHallOrders(order_reset_chan, hall_light_chan, &allHallOrders, &availibleElevators)
+	go ConfirmHallOrders(order_confirmed_chan, hall_light_chan, &allHallOrders, &availableElevators)
+	go ResetHallOrders(order_reset_chan, hall_light_chan, &allHallOrders, &availableElevators)
 
 	for {
 		select {
-		case peerUpdate := <-peer_update_chan:
-			//TODO: oppdater availibleElevators
+		// Unsure if peers returns IDs. Will be tested. DB
+		case peerUpdate := <-network.Peers():
+			for _, peer := range peerUpdate.Peers {
+				if peer != id {
+					availableElevators[peer] = true
+				}
+			}
+
+			// Needed? DB
+			availableElevators[peerUpdate.New] = true
+
+			for _, lostPeer := range peerUpdate.Lost {
+				delete(availableElevators, lostPeer)
+			}
 
 		case localElevator := <-local_elevator_chan:
 			allElevatorStates[localElevator.ID] = localElevator
 			//TODO: er stuck? har ny ordre?
-			network_Tx <- ElevstateHallorderPair{elevatorState: localElevator, hallOrders: allHallOrders[Id]}
+			networkTx <- ElevstateHallorderPair{elevatorState: localElevator, hallOrders: allHallOrders[Id]}
 
-		case stateOrderPair := <-network_Rx:
+			//network.NetworkSend()
+
+		case stateOrderPair := <-networkRx:
 			allElevatorStates[stateOrderPair.elevatorState.ID] = stateOrderPair.elevatorState
 			allHallOrders[stateOrderPair.elevatorState.ID] = stateOrderPair.hallOrders
 			//TODO: er stuck? har ny ordre?
 
 		case newCompletedOrder := <-completed_order_chan:
 			allHallOrders[Id][newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
-			network_Tx <- ElevstateHallorderPair{elevatorState: allElevatorStates[Id], hallOrders: allHallOrders[Id]}
+			networkTx <- ElevstateHallorderPair{elevatorState: allElevatorStates[Id], hallOrders: allHallOrders[Id]}
 
 		case orderToConfirm := <-order_confirmed_chan:
 			for elev := 0; elev < config.N_ELEVATORS; elev++ {
-				if availibleElevators[elev] {
+				if availableElevators[elev] {
 					allHallOrders[elev][orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
 				}
 			}
@@ -171,7 +186,7 @@ func RunOrderManager(
 
 		case orderToReset := <-order_reset_chan:
 			for elev := 0; elev < config.N_ELEVATORS; elev++ {
-				if availibleElevators[elev] {
+				if availableElevators[elev] {
 					allHallOrders[elev][orderToReset.Floor][orderToReset.Button] = NONE
 				}
 			}

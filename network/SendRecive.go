@@ -7,7 +7,7 @@ import (
 
 type NetworkMsg struct {
 	id  string
-	msg string
+	Data ....
 }
 
 var (
@@ -46,8 +46,8 @@ func NetworkReceive() NetworkMsg {
 	return <-networkRx
 }
 
-func Peers() peers.PeerUpdate {
-	return <-peerUpdateCh
+func Peers() <-chan peers.PeerUpdate {
+	return peerUpdateCh
 }
 
 func SetPeerTxEnable(enable bool) {
