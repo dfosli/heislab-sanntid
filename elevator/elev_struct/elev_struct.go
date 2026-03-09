@@ -25,7 +25,7 @@ type Elevator struct {
 	Floor      int
 	Dir        elevio.MotorDirection
 	Requests   Requests
-	ID         int
+	ID         string
 	Stuck      bool
 	Obstructed bool
 }
@@ -41,7 +41,7 @@ type LightEvent struct {
 	On bool
 }
 
-func ElevatorInit(id int) Elevator {
+func ElevatorInit(id string) Elevator {
 	return Elevator{
 		State:      Idle,
 		Floor:      -1,
