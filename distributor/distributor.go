@@ -35,8 +35,8 @@ func CallDistributor(input any) ([]byte, error) {
 }
 
 
-//TODO: finish this function
-func formatInputForDistributor(hallOrders *orders.HallOrders, activeElevators []int, allElevatorStates []elev_struct.Elevator) any {
+
+func FormatInputForDistributor(hallOrders *orders.HallOrders, activeElevators []int, allElevatorStates []elev_struct.Elevator) any {
 	/* input format for distributor looks like this:
 	{
     "hallRequests" : 
