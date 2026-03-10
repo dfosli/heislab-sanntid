@@ -132,6 +132,21 @@ func resetHallOrders(
 	}
 }
 
+func unnasignHallOrders(id string, allHallOrders *HallOrdersAllElevators, dataMutex *sync.RWMutex) {
+	dataMutex.Lock()
+	if orders, ok := (*allHallOrders)[id]; ok {
+		for floor := 0; floor < config.N_FLOORS; floor++ {
+			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+				if orders[floor][btn] == ASSIGNED {
+					orders[floor][btn] = CONFIRMED
+				}
+			}
+		}
+		(*allHallOrders)[id] = orders
+	}
+	dataMutex.Unlock()
+}
+
 func RunOrderManager(
 	id string,
 	local_elevator_chan <-chan elev_struct.Elevator,
