@@ -160,7 +160,11 @@ func RunOrderManager(
 	// Ikke accsess direkte til variabler fra network. DB
 
 	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
+<<<<<<< HEAD
+	//var allElevatorStates = initAllElevatorStates(id)
+=======
 	var allElevatorStates = initAllElevatorStates(id)
+>>>>>>> 8b40e4777b5ef7deece560cfc4e6350a803a5228
 	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
 	availableElevators[id] = true
 	var dataMutex sync.RWMutex
@@ -182,6 +186,25 @@ func RunOrderManager(
 					availableElevators[peer] = true
 				}
 			}
+<<<<<<< HEAD
+
+			// Needed? DB
+			availableElevators[peerUpdate.New] = true
+
+			for _, lostPeer := range peerUpdate.Lost {
+				delete(availableElevators, lostPeer)
+				//TODO: unassigne alle ordre slik at de kan bli assigned til andre heiser. Sette alle dens ordre til NONE (med init funksjon)
+			}
+			dataMutex.Unlock()
+
+		//case localElevator := <-local_elevator_chan:
+		//TODO: er stuck? har ny ordre?
+		//network.NetworkSend()
+
+		// case remoteElevator := <-networkRx:
+		//TODO: er stuck? har ny ordre?
+		//oppdatere allElevatorStates
+=======
 
 			// Needed? DB
 			availableElevators[peerUpdate.New] = true
@@ -199,6 +222,7 @@ func RunOrderManager(
 		case remoteElevator := <-networkRx:
 			//TODO: er stuck? har ny ordre?
 			//oppdatere allElevatorStates
+>>>>>>> 8b40e4777b5ef7deece560cfc4e6350a803a5228
 
 		case newCompletedOrder := <-completed_order_chan:
 			dataMutex.Lock()
