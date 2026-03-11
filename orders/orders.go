@@ -223,7 +223,7 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 			//TODO: kjør distribution
-			//sett til assigned
+			//sett ordre til assigned
 			//hvis assigned til oss, send til elevator
 
 		case orderToReset := <-order_reset_chan:

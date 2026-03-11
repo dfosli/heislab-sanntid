@@ -6,8 +6,8 @@ import (
 	"heislab-sanntid/elevator/elev_struct"
 )
 
-func shouldUpdateLocalHallOrders(localHallOrders *HallOrders, allElevatorHallOrders *HallOrdersAllElevators) bool {
-	for _, externalHallOrders := range *allElevatorHallOrders {
+func ShouldUpdateLocalHallOrders(localHallOrders HallOrders, allElevatorHallOrders HallOrdersAllElevators) bool {
+	for _, externalHallOrders := range allElevatorHallOrders {
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS; btn++ {
 				if localHallOrders[floor][btn] == COMPLETED && externalHallOrders[floor][btn] == NONE {
@@ -24,22 +24,24 @@ func shouldUpdateLocalHallOrders(localHallOrders *HallOrders, allElevatorHallOrd
 	}
 	return false
 }
-func updateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderState OrderState) bool {
-	if hallOrders[floor][btn] < orderState {
-		hallOrders[floor][btn] = orderState
-		return true
-	}
-	return false
-}
-func addNewOrder(hallOrders *HallOrders, floor int, btn int) bool {
-	if hallOrders[floor][btn] == NONE {
-		hallOrders[floor][btn] = NEW
+
+func UpdateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderState OrderState) bool {
+	if (*hallOrders)[floor][btn] < orderState {
+		(*hallOrders)[floor][btn] = orderState
 		return true
 	}
 	return false
 }
 
-func hallOrdersToBoolMatrix(hallOrders *HallOrders) [][]bool {
+func AddNewOrder(hallOrders *HallOrders, floor int, btn int) bool {
+	if (*hallOrders)[floor][btn] == NONE {
+		(*hallOrders)[floor][btn] = NEW
+		return true
+	}
+	return false
+}
+
+func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
 	hallRequests := make([][]bool, len(hallOrders))
 	for floor := 0; floor < len(hallOrders); floor++ {
 		hallRequests[floor] = make([]bool, len(hallOrders[floor]))
@@ -51,19 +53,18 @@ func hallOrdersToBoolMatrix(hallOrders *HallOrders) [][]bool {
 	return hallRequests
 }
 
-
-func reassignedOrders(hallOrders *HallOrders, activeElevators []int,allElevatorStates []elev_struct.Elevator, elevator_id int) [][]bool {
+func ReassignedOrders(hallOrders HallOrders, activeElevators []int, allElevatorStates []elev_struct.Elevator, id string) [][]bool { //TODO endre activeElev. list til map	
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
 	formattedOrders := distributor.FormatInputForDistributor(hallRequests, activeElevators, allElevatorStates)
 	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
 	if err != nil {
 		return nil
 	}
-	hallOrderForID, _, err := distributor.HallOrdersForID(allReassignedHallOrders, elevator_id)
+	hallOrderForID, _, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
 	if err != nil {
 		return nil
 	}
-	_ = elevator_id
+	_ = id
 	
 	return hallOrderForID
 }
