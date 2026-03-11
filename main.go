@@ -2,13 +2,13 @@ package main
 
 import (
 	elevio "Driver-go"
-	network "Network-go"
-	"Network-go/network/localip"
 	"flag"
 	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/elevator"
+	network "heislab-sanntid/network"
+	"heislab-sanntid/network/network/localip"
 	"os"
 	"time"
 )

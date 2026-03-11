@@ -6,6 +6,7 @@ import (
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/state_machine"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -26,7 +27,12 @@ func RunElevator(
 	assigned_orders_chan chan elevio.ButtonEvent,
 	elev_out_chan chan<- elev_struct.Elevator) {
 
-	elevator := elev_struct.ElevatorInit(id)
+	elevatorID, err := strconv.Atoi(id)
+	if err != nil {
+		elevatorID = 0
+	}
+
+	elevator := elev_struct.ElevatorInit(elevatorID)
 	elevator.Floor = elevio.GetFloor()
 
 	if elevator.Floor == -1 {

@@ -1,8 +1,8 @@
 package peers
 
 import (
-	"Network-go/network/conn"
 	"fmt"
+	"heislab-sanntid/network/network/conn"
 	"net"
 	"sort"
 	"time"

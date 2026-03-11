@@ -36,9 +36,9 @@ type DirStatePair struct {
 }
 
 type LightEvent struct {
-	Floor int
+	Floor  int
 	Button elevio.ButtonType
-	On bool
+	On     bool
 }
 
 func ElevatorInit(id int) Elevator {
