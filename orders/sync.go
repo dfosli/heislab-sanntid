@@ -1,17 +1,18 @@
 package orders
 
 import (
+	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
 	"heislab-sanntid/elevator/elev_struct"
 )
 func updateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderState OrderState) bool {
 	(*hallOrders)[floor][btn] = orderState	
-	return true
+	return true //!TODO add some errorhandling here
 }
 
 func UpdateLocalHallOrdersIfPossible(localHallOrders HallOrders, allElevatorHallOrders HallOrdersAllElevators) HallOrders {
-	for _, externalHallOrders := range allElevatorHallOrders {
+	for _, externalHallOrders := range allElevatorHallOrders { //!TODO add some error handling here
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 				if localHallOrders[floor][btn] == COMPLETED && externalHallOrders[floor][btn] == NONE {
@@ -50,18 +51,20 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
 	return hallRequests
 }
 
-func ReassignedOrders(hallOrders HallOrders, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator, id string) [][]bool {	
+func ReassignedOrders(hallOrders HallOrders, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator, id string) ([][]bool, error){	
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
 	formattedOrders := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevatorStates)
 	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
-	if err != nil {
-		return nil
-	}
-	hallOrderForID, _, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
-	if err != nil {
-		return nil
-	}
-	_ = id
-	
-	return hallOrderForID
+    if err != nil {
+        return nil, fmt.Errorf("call distributor: %w", err)
+    }
+
+    hallOrderForID, ok, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
+    if err != nil {
+        return nil, fmt.Errorf("parse distributor output: %w", err)
+    }
+    if !ok {
+        return nil, fmt.Errorf("missing assignments for id %s", id)
+    }
+    return hallOrderForID, nil
 }
