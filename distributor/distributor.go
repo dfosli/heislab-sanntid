@@ -1,6 +1,7 @@
 package distributor
 
 import (
+	elevio "Driver-go"
 	"encoding/json"
 	"fmt"
 	"heislab-sanntid/elevator/elev_struct"
@@ -42,7 +43,23 @@ func CallDistributor(input any) ([]byte, error) {
 	return output, nil
 }
 
-func FormatInputForDistributor(hallRequests [][]bool, activeElevators []int, allElevatorStates []elev_struct.Elevator) any { //TODO endre activeElev. list til map
+func stateToString(elevatorState elev_struct.Elevator) string {
+	stateStrings := map[elev_struct.State]string{
+		elev_struct.Idle: "idle",
+		elev_struct.Moving: "moving",
+		elev_struct.DoorOpen: "doorOpen",
+	}
+	return stateStrings[elevatorState.State]
+}
+func directionToString(elevatorState elev_struct.Elevator) string {
+	directionStrings := map[elevio.MotorDirection]string{
+		elevio.MD_Up: "up",
+		elevio.MD_Down: "down",
+		elevio.MD_Stop: "stop",
+	}
+	return directionStrings[elevatorState.Dir]
+}
+func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator) any {
 	/* input format for distributor looks like this:
 	{
     "hallRequests" : 
@@ -59,16 +76,30 @@ func FormatInputForDistributor(hallRequests [][]bool, activeElevators []int, all
         }
 	}
 	*/
+	type StateInputForDistributor struct {
+		State string `json:"state"`
+		Floor int    `json:"floor"`
+		Direction string `json:"direction"`
+		CabRequests []bool `json:"cabRequests"`
+	}
 	type DistributorInput struct {
     	HallRequests [][]bool                 `json:"hallRequests"`
-    	States       map[string]elev_struct.Elevator `json:"states"`
-	}	//TODO: direction og state til string funksjon
+    	States       map[string]StateInputForDistributor `json:"states"`
+	}	
 
-	states := make(map[string]elev_struct.Elevator, len(activeElevators))
+	states := make(map[string]StateInputForDistributor, len(availableElevators))
 
-	for _, id := range activeElevators {
-		state := allElevatorStates[id]
-		states[id] = state //!feil her
+	for id, _ := range availableElevators {
+		var cabRequests []bool
+		for floor := 0; floor < elev_struct.N_FLOORS; floor++ {
+			cabRequests = append(cabRequests, allElevatorStates[id].Requests[floor][elevio.BT_Cab])
+		}
+		states[id] = StateInputForDistributor{
+			State: stateToString(allElevatorStates[id]),
+			Floor: allElevatorStates[id].Floor,
+			Direction: directionToString(allElevatorStates[id]),
+			CabRequests: cabRequests,
+		}
 	}
 
 	fullInput := DistributorInput{
