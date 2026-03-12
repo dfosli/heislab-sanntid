@@ -38,17 +38,12 @@ func NetworkInit(id string) {
 	go bcast.Receiver(16569, networkRx)
 
 }
-
 func NetworkSend(msg NetworkMsg) {
 	networkTx <- msg
 }
 
 func NewNetworkMsg(id string, pair types.ElevstateHallorderPair) NetworkMsg {
 	return NetworkMsg{ID: id, Pair: pair}
-}
-
-func NetworkReceive() NetworkMsg {
-	return <-networkRx
 }
 
 func NetworkRxChan() <-chan NetworkMsg {
