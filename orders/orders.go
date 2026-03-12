@@ -4,7 +4,8 @@ import (
 	elevio "Driver-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/network"
+	network "heislab-sanntid/network"
+	types "heislab-sanntid/types"
 	"sync"
 	"time"
 )
@@ -50,6 +51,16 @@ func initAllElevatorStates(id string) AllElevatorStates {
 	allElevatorStates := make(AllElevatorStates)
 	allElevatorStates[id] = elev_struct.ElevatorInit(id)
 	return allElevatorStates
+}
+
+func toNetworkHallOrders(hallOrders HallOrders) types.HallOrders {
+	var networkHallOrders types.HallOrders
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			networkHallOrders[floor][btn] = types.OrderState(hallOrders[floor][btn])
+		}
+	}
+	return networkHallOrders
 }
 
 func confirmHallOrders(
@@ -192,12 +203,13 @@ func RunOrderManager(
 			}
 			dataMutex.Unlock()
 
-		// case localElevator := <-local_elevator_chan:
-		// 	//TODO: er stuck? har ny ordre?
-		// 	network.NetworkSend()
+		case localElevator := <-local_elevator_chan:
+			// 	//TODO: er stuck? har ny ordre?
+			network.NetworkSend(network.NewNetworkMsg(id, types.ElevstateHallorderPair{ElevatorState: localElevator, HallOrders: toNetworkHallOrders(allHallOrders[id])}))
 
-		//case remoteElevator := <-networkRx:
-		//TODO: er stuck? har ny ordre?
+		case remoteElevator := <-network.NetworkRxChan():
+			//TODO: er stuck? har ny ordre?
+			allHallOrders[remoteElevator.ID] = remoteElevator.Pair.HallOrders
 		//oppdatere allElevatorStates
 
 		case newCompletedOrder := <-completed_order_chan:
