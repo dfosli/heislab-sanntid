@@ -11,22 +11,21 @@ func updateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderStat
 	return true //!TODO add some errorhandling here
 }
 
-func UpdateLocalHallOrdersIfPossible(localHallOrders HallOrders, allElevatorHallOrders HallOrdersAllElevators) HallOrders {
-	for _, externalHallOrders := range allElevatorHallOrders { //!TODO add some error handling here
+func UpdateLocalHallOrdersIfPossible(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-				if localHallOrders[floor][btn] == COMPLETED && externalHallOrders[floor][btn] == NONE {
+				if localHallOrders[floor][btn] == COMPLETED && remoteHallOrders[floor][btn] == NONE {
 					updateLocalHallOrders(&localHallOrders, floor, btn, NONE)
 				}
-				if localHallOrders[floor][btn] < externalHallOrders[floor][btn] {
-					if localHallOrders[floor][btn] == NONE && externalHallOrders[floor][btn] == COMPLETED {
+				if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
+					if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {
 						continue
 					}//this if will always update to higher order states, unless it is an update from NONE to COMPLETED
-					updateLocalHallOrders(&localHallOrders, floor, btn, externalHallOrders[floor][btn])			
+					updateLocalHallOrders(&localHallOrders, floor, btn, remoteHallOrders[floor][btn])			
 				}
 			}
 		}
-	}
+	
 	return localHallOrders
 }
 
