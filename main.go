@@ -3,9 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	elevio "Driver-go"
+	"heislab-sanntid/config"
+	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/elevator"
 	network "heislab-sanntid/network"
 	"heislab-sanntid/network/network/localip"
+	"heislab-sanntid/orders"
 	"os"
 )
 
@@ -24,8 +28,14 @@ func main() {
 		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	}
 
+	elev_out_chan := make(chan elev_struct.Elevator)
+	clear_local_hall_orders_chan := make(chan bool, config.BUFFER_SIZE)
+	completed_order_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	assigned_orders_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+
 	network.NetworkInit(id)
-	elevator.ElevatorInit(id)
+	elevator.ElevatorInit(id, clear_local_hall_orders_chan, completed_order_chan, assigned_orders_chan, elev_out_chan)
+	orders.OrdersInit(id, clear_local_hall_orders_chan, completed_order_chan, assigned_orders_chan, elev_out_chan)
 
 	// KUN FOR Å SIMULERE EN ENKELT HEIS
 	// go func() { //black hole for channels, channels blocker programmet hvis ingen leser fra dem
