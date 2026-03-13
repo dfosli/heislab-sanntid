@@ -156,21 +156,15 @@ func unassignHallOrders(id string, allHallOrders HallOrdersAllElevators) HallOrd
 	return allHallOrders[id]
 }
 
-func setOrdersToAssigned(id string, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) HallOrdersAllElevators {
+func setOrdersToAssigned(assignedOrders [][]bool, hallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			if allHallOrders[id][floor][btn] == CONFIRMED {
-				for elevId, isAvailable := range availableElevators {
-					if isAvailable {
-						orders := allHallOrders[elevId]
-						orders[floor][btn] = ASSIGNED
-						allHallOrders[elevId] = orders
-					}
+			if assignedOrders[floor][btn] {
+					hallOrders[floor][btn] = ASSIGNED
 				}
 			}
 		}
-	}
-	return allHallOrders
+	return hallOrders
 }
 
 func lostPeerReassignOrders(lost_id string, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) HallOrdersAllElevators {
@@ -190,24 +184,13 @@ func RunOrderManager(
 	assign_order_chan chan<- elevio.ButtonEvent,
 	completed_order_chan <-chan elevio.ButtonEvent,
 	clear_local_hall_orders_chan chan<- bool,
-	// networkTx chan<- ElevstateHallorderPair,
-	// networkRx <-chan ElevstateHallorderPair,
-	//peer_update_chan <-chan peers.PeerUpdate
-) {
-	// Ikke accsess direkte til variabler fra network. DB
-
-	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
-	var allElevatorStates = initAllElevatorStates(id)
-	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
-	availableElevators[id] = true
-	var dataMutex sync.RWMutex
-
-	order_confirmed_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	order_reset_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	hall_light_chan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
-
-	go confirmHallOrders(order_confirmed_chan, hall_light_chan, &allHallOrders, &availableElevators, &dataMutex)
-	go resetHallOrders(order_reset_chan, hall_light_chan, &allHallOrders, &availableElevators, &dataMutex)
+	hall_light_chan chan elev_struct.LightEvent,
+	order_confirmed_chan <-chan elevio.ButtonEvent,
+	order_reset_chan <-chan elevio.ButtonEvent,
+	allHallOrders HallOrdersAllElevators,
+	allElevatorStates AllElevatorStates,
+	availableElevators map[string]bool,
+	dataMutex *sync.RWMutex) {
 
 	for {
 		select {
@@ -217,6 +200,7 @@ func RunOrderManager(
 			for _, peer := range peerUpdate.Peers {
 				if peer != id {
 					availableElevators[peer] = true
+					// unassigne ordre her slik at de blir fordelt på de tilgjengelige?
 				}
 			}
 
@@ -224,9 +208,9 @@ func RunOrderManager(
 			availableElevators[peerUpdate.New] = true
 
 			for _, lostPeer := range peerUpdate.Lost {
-				delete(availableElevators, lostPeer) //! delete? eller sett til false?
+				availableElevators[lostPeer] = false
 				allHallOrders = lostPeerReassignOrders(lostPeer, allHallOrders, availableElevators)
-				clear_local_hall_orders_chan <- true
+				clear_local_hall_orders_chan <- true // sletter alle lokale fordi de vil bli reassigned til andre, men er det dumt?
 			}
 			dataMutex.Unlock()
 
@@ -238,19 +222,19 @@ func RunOrderManager(
 				availableElevators[id] = false
 				allHallOrders = lostPeerReassignOrders(id, allHallOrders, availableElevators)
 				dataMutex.Unlock()
-				clear_local_hall_orders_chan <- true
+				clear_local_hall_orders_chan <- true // er det dumt å slette lokale ordre her? Skal egt bli reassigned når availible igjen
 			} else if !localElevator.Stuck && !availableElevators[id] {
 				dataMutex.Lock()
 				availableElevators[id] = true
 				dataMutex.Unlock()
 			}
 
+			dataMutex.Lock()
+			allHallOrders[id] = AddNewLocalOrder(allHallOrders[id], localElevator.Requests)
+			dataMutex.Unlock()
 
-			//TODO: ny ordre? hvis vi har none og den har true, sett til new
 			//network.NetworkSend()
 			
-			
-
 		case remoteElevator := <-network.NetworkRxChan():
 			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.hallOrders)
 			
@@ -258,13 +242,12 @@ func RunOrderManager(
 			allHallOrders[id] = newHallOrder
 			dataMutex.Unlock()
 
-
 		case newCompletedOrder := <-completed_order_chan:
 			dataMutex.Lock()
 			if orders, ok := allHallOrders[id]; ok {
 				orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
 				allHallOrders[id] = orders
-				//TODO: network send
+				//network.NetworkSend()
 			}
 			dataMutex.Unlock()
 
@@ -279,16 +262,20 @@ func RunOrderManager(
 				}
 			}
 			hall_light_chan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
+
+			hallOrdersForId, _ := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
+			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
 			dataMutex.Unlock()
 
-			//TODO: kjør distribution
+			for floor := 0; floor < config.N_FLOORS; floor++ {
+				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+					if hallOrdersForId[floor][btn] {
+						assign_order_chan <- elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)}
+					}
+				}
+			}
 
-			dataMutex.Lock()
-			allHallOrders = setOrdersToAssigned(id, allHallOrders, availableElevators)
-			dataMutex.Unlock()
-
-			//hvis assigned til oss, send til elevator
-			//loope gjennom assigned orders, og sende button_events til assign_order_chan for hver
+			//network.NetworkSend()
 
 		case orderToReset := <-order_reset_chan:
 			dataMutex.Lock()
@@ -305,6 +292,43 @@ func RunOrderManager(
 
 		case hallLightEvent := <-hall_light_chan:
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
+
+		default:
+			//network.NetworkSend()
 		}
 	}
+}
+
+func OrdersInit(id string,
+	clear_local_hall_orders_chan chan<- bool,
+	completed_order_chan <-chan elevio.ButtonEvent,
+	assign_order_chan chan<- elevio.ButtonEvent,
+	local_elevator_chan <-chan elev_struct.Elevator){
+
+	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
+	var allElevatorStates = initAllElevatorStates(id)
+	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
+	availableElevators[id] = true
+	var dataMutex sync.RWMutex
+
+	order_confirmed_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	order_reset_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	hall_light_chan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
+
+	go confirmHallOrders(order_confirmed_chan, hall_light_chan, &allHallOrders, &availableElevators, &dataMutex)
+	go resetHallOrders(order_reset_chan, hall_light_chan, &allHallOrders, &availableElevators, &dataMutex)
+
+	go RunOrderManager(
+		id, 
+		local_elevator_chan, 
+		assign_order_chan, 
+		completed_order_chan, 
+		clear_local_hall_orders_chan, 
+		hall_light_chan, 
+		order_confirmed_chan, 
+		order_reset_chan, 
+		allHallOrders, 
+		allElevatorStates, 
+		availableElevators, 
+		&dataMutex)
 }
