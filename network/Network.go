@@ -38,12 +38,18 @@ func NetworkInit(id string) {
 	go bcast.Transmitter(16569, networkTx)
 	go bcast.Receiver(16569, networkRx)
 }
-func NetworkSend(msg NetworkMsg) {
-	networkTx <- msg
-}
+func NetworkSend(id string, hallOrders types.HallOrders, elevatorState types.ElevatorState) {
 
-func NewNetworkMsg(id string, hallOrders types.HallOrders, elevatorState types.ElevatorState) NetworkMsg {
-	return NetworkMsg{ID: id, HallOrders: hallOrders, ElevatorState: elevatorState}
+	if !hasVisiblePeers() {
+		return
+	}
+
+	msg := NetworkMsg{
+		ID:            id,
+		HallOrders:    hallOrders,
+		ElevatorState: elevatorState,
+	}
+	networkTx <- msg
 }
 
 func NetworkRxChan() <-chan NetworkMsg {
@@ -58,7 +64,7 @@ func SetPeerTxEnable(enable bool) {
 	peerTxEnable <- enable
 }
 
-func HasVisiblePeers() bool {
+func hasVisiblePeers() bool {
 	select {
 	case peers := <-peerUpdateCh:
 		if len(peers.Peers) > 0 {
