@@ -100,21 +100,16 @@ func RunElevator(
 	}
 }
 
-func ElevatorInit(id string) {
+func ElevatorInit(id string, clear_local_hall_orders <-chan bool, completed_order chan<- elevio.ButtonEvent, assigned_orders chan elevio.ButtonEvent, elev_out chan<- elev_struct.Elevator) {
 	elevio.Init("localhost:15657", config.N_FLOORS)
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)
 	drv_obstr := make(chan bool)
 
-	elev_out := make(chan elev_struct.Elevator)
-	clear_local_hall_orders := make(chan bool, config.BUFFER_SIZE)
-	clear_order := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	assigned_orders := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
 	go elevio.PollObstructionSwitch(drv_obstr)
 
-	go RunElevator(id, drv_buttons, drv_floors, drv_obstr, clear_local_hall_orders, clear_order, assigned_orders, elev_out)
+	go RunElevator(id, drv_buttons, drv_floors, drv_obstr, clear_local_hall_orders, completed_order, assigned_orders, elev_out)
 }

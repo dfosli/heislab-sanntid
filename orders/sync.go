@@ -30,11 +30,15 @@ func UpdateLocalHallOrdersIfPossible(localHallOrders HallOrders, remoteHallOrder
 }
 
 
-func AddNewOrder(hallOrders HallOrders, floor int, btn int) HallOrders {
-	if (hallOrders)[floor][btn] == NONE {
-		(hallOrders)[floor][btn] = NEW
+func AddNewLocalOrder(hallOrders HallOrders, requests elev_struct.Requests) HallOrders {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if requests[floor][btn] && hallOrders[floor][btn] == NONE {
+				hallOrders[floor][btn] = NEW
+			}
+		}
 	}
-	return 	hallOrders
+	return hallOrders
 }
 
 func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
@@ -49,7 +53,7 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
 	return hallRequests
 }
 
-func ReassignedOrders(hallOrders HallOrders, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator, id string) ([][]bool, error){	
+func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator) ([][]bool, error){	
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
 	formattedOrders := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevatorStates)
 	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
