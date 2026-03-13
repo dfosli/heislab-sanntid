@@ -8,10 +8,7 @@ import (
 type OrderState int
 type HallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
 
-type ElevstateHallorderPair struct {
-	ElevatorState elev_struct.Elevator
-	HallOrders    HallOrders
-}
+type ElevatorState elev_struct.Elevator
 
 const (
 	NONE OrderState = iota
@@ -23,4 +20,4 @@ const (
 
 type HallOrdersAllElevators [config.N_ELEVATORS]HallOrders
 
-type AllElevatorStates [config.N_ELEVATORS]elev_struct.Elevator
+type AllElevatorStates [config.N_ELEVATORS]ElevatorState
