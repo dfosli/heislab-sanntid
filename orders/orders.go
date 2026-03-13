@@ -186,10 +186,10 @@ func lostPeerReassignOrders(lost_id string, allHallOrders HallOrdersAllElevators
 
 func RunOrderManager(
 	id string,
-	local_elevator_chan <-chan elev_struct.Elevator,
-	assign_order_chan chan<- elevio.ButtonEvent,
-	completed_order_chan <-chan elevio.ButtonEvent,
-	clear_local_hall_orders_chan chan<- bool,
+	localElevatorChan <-chan elev_struct.Elevator,
+	assignOrderChan chan<- elevio.ButtonEvent,
+	completedOrderChan <-chan elevio.ButtonEvent,
+	clearLocalHallOrdersChan chan<- bool,
 	// networkTx chan<- ElevstateHallorderPair,
 	// networkRx <-chan ElevstateHallorderPair,
 	//peer_update_chan <-chan peers.PeerUpdate
@@ -221,16 +221,17 @@ func RunOrderManager(
 			}
 
 			// Needed? DB
+			// Could leed to fatal problems. DB
 			availableElevators[peerUpdate.New] = true
 
 			for _, lostPeer := range peerUpdate.Lost {
 				delete(availableElevators, lostPeer) //! delete? eller sett til false?
 				allHallOrders = lostPeerReassignOrders(lostPeer, allHallOrders, availableElevators)
-				clear_local_hall_orders_chan <- true
+				clearLocalHallOrdersChan <- true
 			}
 			dataMutex.Unlock()
 
-		case localElevator := <-local_elevator_chan:
+		case localElevator := <-localElevatorChan:
 			allElevatorStates[id] = localElevator
 
 			if localElevator.Stuck && availableElevators[id] {
@@ -238,13 +239,12 @@ func RunOrderManager(
 				availableElevators[id] = false
 				allHallOrders = lostPeerReassignOrders(id, allHallOrders, availableElevators)
 				dataMutex.Unlock()
-				clear_local_hall_orders_chan <- true
+				clearLocalHallOrdersChan <- true
 			} else if !localElevator.Stuck && !availableElevators[id] {
 				dataMutex.Lock()
 				availableElevators[id] = true
 				dataMutex.Unlock()
 			}
-
 
 			//TODO: ny ordre? hvis vi har none og den har true, sett til new
 			//network.NetworkSend()
@@ -259,7 +259,7 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 
-		case newCompletedOrder := <-completed_order_chan:
+		case newCompletedOrder := <-completedOrderChan:
 			dataMutex.Lock()
 			if orders, ok := allHallOrders[id]; ok {
 				orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
