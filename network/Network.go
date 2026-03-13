@@ -1,13 +1,14 @@
 package network
 
 import (
-	"Network-go/network/bcast"
-	"Network-go/network/peers"
+	"heislab-sanntid/network/network/bcast"
+	"heislab-sanntid/network/network/peers"
+	"heislab-sanntid/types"
 )
 
 type NetworkMsg struct {
-	id  string
-	Data ....
+	ID   string
+	Pair types.ElevstateHallorderPair
 }
 
 var (
@@ -37,13 +38,16 @@ func NetworkInit(id string) {
 	go bcast.Receiver(16569, networkRx)
 
 }
-
 func NetworkSend(msg NetworkMsg) {
 	networkTx <- msg
 }
 
-func NetworkReceive() NetworkMsg {
-	return <-networkRx
+func NewNetworkMsg(id string, pair types.ElevstateHallorderPair) NetworkMsg {
+	return NetworkMsg{ID: id, Pair: pair}
+}
+
+func NetworkRxChan() <-chan NetworkMsg {
+	return networkRx
 }
 
 func Peers() <-chan peers.PeerUpdate {

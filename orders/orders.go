@@ -2,9 +2,10 @@ package orders
 
 import (
 	elevio "Driver-go"
-	network "Network-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
+	network "heislab-sanntid/network"
+	types "heislab-sanntid/types"
 	"sync"
 	"time"
 )
@@ -50,6 +51,16 @@ func initAllElevatorStates(id string) AllElevatorStates {
 	allElevatorStates := make(AllElevatorStates)
 	allElevatorStates[id] = elev_struct.ElevatorInit(id)
 	return allElevatorStates
+}
+
+func toNetworkHallOrders(hallOrders HallOrders) types.HallOrders {
+	var networkHallOrders types.HallOrders
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			networkHallOrders[floor][btn] = types.OrderState(hallOrders[floor][btn])
+		}
+	}
+	return networkHallOrders
 }
 
 func confirmHallOrders(
@@ -132,9 +143,8 @@ func resetHallOrders(
 	}
 }
 
-func unnasignHallOrders(id string, allHallOrders *HallOrdersAllElevators, dataMutex *sync.RWMutex) {
-	dataMutex.Lock()
-	if orders, ok := (*allHallOrders)[id]; ok {
+func unassignHallOrders(id string, allHallOrders HallOrdersAllElevators) HallOrders {
+	if orders, ok := allHallOrders[id]; ok {
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 				if orders[floor][btn] == ASSIGNED {
@@ -142,9 +152,36 @@ func unnasignHallOrders(id string, allHallOrders *HallOrdersAllElevators, dataMu
 				}
 			}
 		}
-		(*allHallOrders)[id] = orders
 	}
-	dataMutex.Unlock()
+	return allHallOrders[id]
+}
+
+func setOrdersToAssigned(id string, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) HallOrdersAllElevators {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if allHallOrders[id][floor][btn] == CONFIRMED {
+				for elevId, isAvailable := range availableElevators {
+					if isAvailable {
+						orders := allHallOrders[elevId]
+						orders[floor][btn] = ASSIGNED
+						allHallOrders[elevId] = orders
+					}
+				}
+			}
+		}
+	}
+	return allHallOrders
+}
+
+func lostPeerReassignOrders(lost_id string, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) HallOrdersAllElevators {
+	for id, isAvailable := range availableElevators {
+		if isAvailable && id != lost_id {
+			allHallOrders[id] = unassignHallOrders(id, allHallOrders)
+		}
+	}
+	allHallOrders[lost_id] = initHallOrders()
+
+	return allHallOrders
 }
 
 func RunOrderManager(
@@ -160,7 +197,7 @@ func RunOrderManager(
 	// Ikke accsess direkte til variabler fra network. DB
 
 	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
-	var allElevatorStates = initAllElevatorStates(id)
+	//var allElevatorStates = initAllElevatorStates(id)
 	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
 	availableElevators[id] = true
 	var dataMutex sync.RWMutex
@@ -187,13 +224,29 @@ func RunOrderManager(
 			availableElevators[peerUpdate.New] = true
 
 			for _, lostPeer := range peerUpdate.Lost {
-				delete(availableElevators, lostPeer)
-				//TODO: unassigne alle ordre slik at de kan bli assigned til andre heiser. Sette alle dens ordre til NONE (med init funksjon)
+				delete(availableElevators, lostPeer) //! delete? eller sett til false?
+				allHallOrders = lostPeerReassignOrders(lostPeer, allHallOrders, availableElevators)
+				clear_local_hall_orders_chan <- true
 			}
 			dataMutex.Unlock()
 
 		case localElevator := <-local_elevator_chan:
-			//TODO: er stuck? har ny ordre?
+			allElevatorStates[id] = localElevator
+
+			if localElevator.Stuck && availableElevators[id] {
+				dataMutex.Lock()
+				availableElevators[id] = false
+				allHallOrders = lostPeerReassignOrders(id, allHallOrders, availableElevators)
+				dataMutex.Unlock()
+				clear_local_hall_orders_chan <- true
+			} else if !localElevator.Stuck && !availableElevators[id] {
+				dataMutex.Lock()
+				availableElevators[id] = true
+				dataMutex.Unlock()
+			}
+
+
+			//TODO: ny ordre? hvis vi har none og den har true, sett til new
 			//network.NetworkSend()
 			
 			
@@ -204,6 +257,7 @@ func RunOrderManager(
 			dataMutex.Lock()
 			allHallOrders[id] = newHallOrder
 			dataMutex.Unlock()
+
 
 		case newCompletedOrder := <-completed_order_chan:
 			dataMutex.Lock()
@@ -228,8 +282,13 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 			//TODO: kjør distribution
-			//sett ordre til assigned
+
+			dataMutex.Lock()
+			allHallOrders = setOrdersToAssigned(id, allHallOrders, availableElevators)
+			dataMutex.Unlock()
+
 			//hvis assigned til oss, send til elevator
+			//loope gjennom assigned orders, og sende button_events til assign_order_chan for hver
 
 		case orderToReset := <-order_reset_chan:
 			dataMutex.Lock()
