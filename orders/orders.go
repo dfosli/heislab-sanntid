@@ -195,10 +195,15 @@ func RunOrderManager(
 		case localElevator := <-local_elevator_chan:
 			//TODO: er stuck? har ny ordre?
 			//network.NetworkSend()
+			
+			
 
 		case remoteElevator := <-networkRx:
-			//TODO: er stuck? har ny ordre?
-			//oppdatere allElevatorStates
+			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.hallOrders)
+			
+			dataMutex.Lock()
+			allHallOrders[id] = newHallOrder
+			dataMutex.Unlock()
 
 		case newCompletedOrder := <-completed_order_chan:
 			dataMutex.Lock()
