@@ -19,9 +19,6 @@ func main() {
 	flag.StringVar(&id, "id", "", "id of this peer")
 	flag.Parse()
 
-	// ... or alternatively, we can use the local IP address.
-	// (But since we can run multiple programs on the same PC, we also append the
-	//  process ID)
 	if id == "" {
 		localIP, err := localip.LocalIP()
 		if err != nil {

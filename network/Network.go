@@ -7,8 +7,9 @@ import (
 )
 
 type NetworkMsg struct {
-	ID   string
-	Pair types.ElevstateHallorderPair
+	ID            string
+	HallOrders    types.HallOrders
+	ElevatorState types.ElevatorState
 }
 
 var (
@@ -36,14 +37,13 @@ func NetworkInit(id string) {
 	//  start multiple transmitters/receivers on the same port.
 	go bcast.Transmitter(16569, networkTx)
 	go bcast.Receiver(16569, networkRx)
-
 }
 func NetworkSend(msg NetworkMsg) {
 	networkTx <- msg
 }
 
-func NewNetworkMsg(id string, pair types.ElevstateHallorderPair) NetworkMsg {
-	return NetworkMsg{ID: id, Pair: pair}
+func NewNetworkMsg(id string, hallOrders types.HallOrders, elevatorState types.ElevatorState) NetworkMsg {
+	return NetworkMsg{ID: id, HallOrders: hallOrders, ElevatorState: elevatorState}
 }
 
 func NetworkRxChan() <-chan NetworkMsg {
@@ -56,4 +56,16 @@ func Peers() <-chan peers.PeerUpdate {
 
 func SetPeerTxEnable(enable bool) {
 	peerTxEnable <- enable
+}
+
+func HasVisiblePeers() bool {
+	select {
+	case peers := <-peerUpdateCh:
+		if len(peers.Peers) > 0 {
+			return true
+		}
+		return false
+	default:
+		return false
+	}
 }
