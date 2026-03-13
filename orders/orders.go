@@ -252,7 +252,7 @@ func RunOrderManager(
 			
 
 		case remoteElevator := <-network.NetworkRxChan():
-			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.hallOrders)
+			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.HallOrders)
 			
 			dataMutex.Lock()
 			allHallOrders[id] = newHallOrder
