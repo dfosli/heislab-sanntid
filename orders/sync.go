@@ -31,12 +31,11 @@ func UpdateLocalHallOrdersIfPossible(localHallOrders HallOrders, allElevatorHall
 }
 
 
-func AddNewOrder(hallOrders *HallOrders, floor int, btn int) bool {
-	if (*hallOrders)[floor][btn] == NONE {
-		(*hallOrders)[floor][btn] = NEW
-		return true
+func AddNewOrder(hallOrders HallOrders, floor int, btn int) HallOrders {
+	if (hallOrders)[floor][btn] == NONE {
+		(hallOrders)[floor][btn] = NEW
 	}
-	return false
+	return 	hallOrders
 }
 
 func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
