@@ -63,6 +63,16 @@ func toNetworkHallOrders(hallOrders HallOrders) types.HallOrders {
 	return networkHallOrders
 }
 
+func fromNetworkHallOrders(networkHallOrders types.HallOrders) HallOrders {
+	var hallOrders HallOrders
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			hallOrders[floor][btn] = OrderState(networkHallOrders[floor][btn])
+		}
+	}
+	return hallOrders
+}
+
 func confirmHallOrders(
 	order_confirmed_chan chan<- elevio.ButtonEvent,
 	hall_light_chan chan<- elev_struct.LightEvent,
@@ -233,7 +243,7 @@ func RunOrderManager(
 			//network.NetworkSend()
 			
 		case remoteElevator := <-network.NetworkRxChan():
-			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.HallOrders)
+			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], fromNetworkHallOrders(remoteElevator.HallOrders))//this function is added now as long as the HallORders stuff is not working
 			
 			dataMutex.Lock()
 			allHallOrders[id] = newHallOrder
