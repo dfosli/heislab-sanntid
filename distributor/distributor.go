@@ -2,6 +2,7 @@ package distributor
 
 import (
 	elevio "Driver-go"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"heislab-sanntid/elevator/elev_struct"
@@ -24,16 +25,7 @@ func CallDistributor(input any) ([]byte, error) {
 	}
 
 	cmd := exec.Command("./distributor/hall_request_assigner.exe")
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("stdin pipe error: %w", err)
-	}
-
-	go func() {
-		_, _ = stdin.Write(append(jsonData, '\n'))
-		_ = stdin.Close()
-	}()
+	cmd.Stdin = bytes.NewReader(append(jsonData, '\n'))
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -89,8 +81,11 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 
 	states := make(map[string]StateInputForDistributor, len(availableElevators))
 
-	for id, _ := range availableElevators {
+	for id, isActive := range availableElevators {
 		var cabRequests []bool
+		if !isActive {
+			continue
+		}
 		for floor := 0; floor < elev_struct.N_FLOORS; floor++ {
 			cabRequests = append(cabRequests, allElevatorStates[id].Requests[floor][elevio.BT_Cab])
 		}
@@ -107,8 +102,10 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 		States:       states,
 	}
 	
-	data, _ := json.MarshalIndent(fullInput, "", "  ")
-	fmt.Println(string(data))
+	debugData, _ := json.MarshalIndent(fullInput, "", "  ")
+	fmt.Println(string(debugData))
+
+	data, _ := json.Marshal(fullInput)
 	return data
 }
 
