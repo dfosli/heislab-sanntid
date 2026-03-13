@@ -10,26 +10,20 @@ import (
 	"time"
 )
 
-type OrderState int
+type OrderState = types.OrderState
+type HallOrders = types.HallOrders
 
 const (
-	NONE OrderState = iota
-	NEW
-	CONFIRMED
-	ASSIGNED
-	COMPLETED
+	NONE      = types.NONE
+	NEW       = types.NEW
+	CONFIRMED = types.CONFIRMED
+	ASSIGNED  = types.ASSIGNED
+	COMPLETED = types.COMPLETED
 )
-
-type HallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
 
 type HallOrdersAllElevators map[string]HallOrders
 
 type AllElevatorStates map[string]elev_struct.Elevator
-
-type ElevstateHallorderPair struct { //TODO endre navn
-	elevatorState elev_struct.Elevator
-	hallOrders    HallOrders
-}
 
 func initHallOrders() HallOrders {
 	var hallOrders HallOrders
@@ -53,11 +47,11 @@ func initAllElevatorStates(id string) AllElevatorStates {
 	return allElevatorStates
 }
 
-func toNetworkHallOrders(hallOrders HallOrders) types.HallOrders {
-	var networkHallOrders types.HallOrders
+func toNetworkHallOrders(hallOrders HallOrders) HallOrders {
+	var networkHallOrders HallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			networkHallOrders[floor][btn] = types.OrderState(hallOrders[floor][btn])
+			networkHallOrders[floor][btn] = OrderState(hallOrders[floor][btn])
 		}
 	}
 	return networkHallOrders
@@ -202,12 +196,12 @@ func RunOrderManager(
 	availableElevators[id] = true
 	var dataMutex sync.RWMutex
 
-	order_confirmed_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	order_reset_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	hall_light_chan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
+	orderConfirmedChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	orderResetChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	hallLightChan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
 
-	go confirmHallOrders(order_confirmed_chan, hall_light_chan, &allHallOrders, &availableElevators, &dataMutex)
-	go resetHallOrders(order_reset_chan, hall_light_chan, &allHallOrders, &availableElevators, &dataMutex)
+	go confirmHallOrders(orderConfirmedChan, hallLightChan, &allHallOrders, &availableElevators, &dataMutex)
+	go resetHallOrders(orderResetChan, hallLightChan, &allHallOrders, &availableElevators, &dataMutex)
 
 	for {
 		select {
@@ -248,16 +242,13 @@ func RunOrderManager(
 
 			//TODO: ny ordre? hvis vi har none og den har true, sett til new
 			//network.NetworkSend()
-			
-			
 
 		case remoteElevator := <-network.NetworkRxChan():
-			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.hallOrders)
-			
+			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.HallOrders)
+
 			dataMutex.Lock()
 			allHallOrders[id] = newHallOrder
 			dataMutex.Unlock()
-
 
 		case newCompletedOrder := <-completedOrderChan:
 			dataMutex.Lock()
@@ -268,7 +259,7 @@ func RunOrderManager(
 			}
 			dataMutex.Unlock()
 
-		case orderToConfirm := <-order_confirmed_chan:
+		case orderToConfirm := <-orderConfirmedChan:
 			dataMutex.Lock()
 			for id, isAvailable := range availableElevators {
 				if isAvailable {
@@ -278,7 +269,7 @@ func RunOrderManager(
 					}
 				}
 			}
-			hall_light_chan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
+			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
 			dataMutex.Unlock()
 
 			//TODO: kjør distribution
@@ -290,7 +281,7 @@ func RunOrderManager(
 			//hvis assigned til oss, send til elevator
 			//loope gjennom assigned orders, og sende button_events til assign_order_chan for hver
 
-		case orderToReset := <-order_reset_chan:
+		case orderToReset := <-orderResetChan:
 			dataMutex.Lock()
 			for id, isAvailable := range availableElevators {
 				if isAvailable {
@@ -300,10 +291,10 @@ func RunOrderManager(
 					}
 				}
 			}
-			hall_light_chan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
+			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
 			dataMutex.Unlock()
 
-		case hallLightEvent := <-hall_light_chan:
+		case hallLightEvent := <-hallLightChan:
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
 		}
 	}

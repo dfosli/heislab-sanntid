@@ -6,8 +6,8 @@ import (
 )
 
 type OrderState int
-type HallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
 
+type HallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
 type ElevatorState elev_struct.Elevator
 
 const (
