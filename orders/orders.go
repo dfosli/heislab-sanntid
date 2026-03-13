@@ -197,7 +197,7 @@ func RunOrderManager(
 	// Ikke accsess direkte til variabler fra network. DB
 
 	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
-	//var allElevatorStates = initAllElevatorStates(id)
+	var allElevatorStates = initAllElevatorStates(id)
 	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
 	availableElevators[id] = true
 	var dataMutex sync.RWMutex
@@ -251,7 +251,7 @@ func RunOrderManager(
 			
 			
 
-		case remoteElevator := <-networkRx:
+		case remoteElevator := <-network.NetworkRxChan():
 			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], remoteElevator.hallOrders)
 			
 			dataMutex.Lock()
