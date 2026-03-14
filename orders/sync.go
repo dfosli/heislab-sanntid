@@ -56,12 +56,12 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
 func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator) ([][]bool, error) {
 
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
-	formattedOrders := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevatorStates)
-	if formattedOrders == nil {
-		return nil, fmt.Errorf("no available elevators to assign orders")
+	formattedOrders, err := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevatorStates)
+	if err != nil {
+		return nil, fmt.Errorf("format input for distributor: %w", err)
 	}
-	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
 
+	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
 	if err != nil {
 		return nil, fmt.Errorf("call distributor: %w", err)
 	}
@@ -73,5 +73,6 @@ func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[str
 	if !ok {
 		return nil, fmt.Errorf("missing assignments for id %s", id)
 	}
+	
 	return hallOrderForID, nil
 }

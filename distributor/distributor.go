@@ -51,7 +51,7 @@ func directionToString(elevatorState elev_struct.Elevator) string {
 	}
 	return directionStrings[elevatorState.Dir]
 }
-func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator) any {
+func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator) ([]byte, error) {
 	/* input format for distributor looks like this:
 	{
     "hallRequests" : 
@@ -101,7 +101,7 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 		}
 	}
 	if len(states) == 0 {
-		return nil
+		return nil, fmt.Errorf("no active elevators")
 	}
 	
 	fullInput := DistributorInput{
@@ -112,8 +112,11 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 	debugData, _ := json.MarshalIndent(fullInput, "", "  ")
 	fmt.Println(string(debugData))
 
-	data, _ := json.Marshal(fullInput)
-	return data
+	data, err := json.Marshal(fullInput)
+	if err != nil {
+		return nil, fmt.Errorf("marshal error: %w", err)
+	}
+	return data, nil
 }
 
 func ParseDistributorOutput(output []byte) (map[string][][]bool, error) {

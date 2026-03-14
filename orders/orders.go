@@ -287,9 +287,14 @@ func RunOrderManager(
 					}
 				}
 			}
-			hallOrdersForId, _ := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
-			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
-			
+
+			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
+			if err != nil {
+				dataMutex.Unlock()
+				continue
+			}
+
+			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])			
 			dataMutex.Unlock()
 
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
