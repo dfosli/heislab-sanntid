@@ -154,8 +154,8 @@ func resetHallOrders(
 func unassignHallOrders(hallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			if hallOrders[floor][btn] == ASSIGNED {
-				hallOrders[floor][btn] = CONFIRMED
+			if hallOrders[floor][btn] == ASSIGNED || hallOrders[floor][btn] == CONFIRMED {
+				hallOrders[floor][btn] = NEW
 			}
 		}
 	}
@@ -184,7 +184,7 @@ func lostPeerReassignOrders(lost_id string, allHallOrders HallOrdersAllElevators
 	return allHallOrders
 }
 
-func checkStuckUpdateAvailable(elevator elev_struct.Elevator, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) (HallOrdersAllElevators, map[string]bool) {
+func checkStuckAndUpdateAvailable(elevator elev_struct.Elevator, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) (HallOrdersAllElevators, map[string]bool) {
 	if elevator.Stuck && availableElevators[elevator.ID] {
 		availableElevators[elevator.ID] = false
 		allHallOrders = lostPeerReassignOrders(elevator.ID, allHallOrders, availableElevators)
@@ -217,6 +217,7 @@ func RunOrderManager(
 				if peer != id {
 					availableElevators[peer] = true
 					// unassigne ordre her slik at de blir fordelt på de tilgjengelige?
+					// men da vil det kanskje reassignes hver gang det kommer en peer update...
 				}
 			}
 
@@ -225,9 +226,13 @@ func RunOrderManager(
 			availableElevators[peerUpdate.New] = true
 
 			for _, lostPeer := range peerUpdate.Lost {
-				availableElevators[lostPeer] = false
-				allHallOrders = lostPeerReassignOrders(lostPeer, allHallOrders, availableElevators)
-				clearLocalHallOrdersChan <- true //riktig?
+				if lostPeer == id {
+					continue
+				}
+				if availableElevators[lostPeer] {
+					availableElevators[lostPeer] = false
+					allHallOrders = lostPeerReassignOrders(lostPeer, allHallOrders, availableElevators)
+				}
 			}
 			dataMutex.Unlock()
 
@@ -235,7 +240,7 @@ func RunOrderManager(
 			allElevatorStates[id] = localElevator
 
 			dataMutex.Lock()
-			allHallOrders, availableElevators = checkStuckUpdateAvailable(localElevator, allHallOrders, availableElevators)
+			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(localElevator, allHallOrders, availableElevators)
 			allHallOrders[id] = AddNewLocalOrder(allHallOrders[id], localElevator.Requests)
 			dataMutex.Unlock()
 
@@ -246,7 +251,7 @@ func RunOrderManager(
 
 			dataMutex.Lock()
 			allHallOrders[id] = newHallOrder
-			allHallOrders, availableElevators = checkStuckUpdateAvailable(remoteElevator.ElevatorState, allHallOrders, availableElevators)
+			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(remoteElevator.ElevatorState, allHallOrders, availableElevators)
 			dataMutex.Unlock()
 
 		case newCompletedOrder := <-completedOrderChan:
@@ -321,7 +326,7 @@ func RunOrderManager(
 				}
 			}
 			dataMutex.Unlock()
-			
+
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
 
 		case hallLightEvent := <-hallLightChan:
