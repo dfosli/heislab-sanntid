@@ -184,6 +184,16 @@ func lostPeerReassignOrders(lost_id string, allHallOrders HallOrdersAllElevators
 	return allHallOrders
 }
 
+func checkStuckUpdateAvailable(elevator elev_struct.Elevator, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) (HallOrdersAllElevators, map[string]bool) {
+	if elevator.Stuck && availableElevators[elevator.ID] {
+		availableElevators[elevator.ID] = false
+		allHallOrders = lostPeerReassignOrders(elevator.ID, allHallOrders, availableElevators)
+	} else if !elevator.Stuck && !availableElevators[elevator.ID] {
+		availableElevators[elevator.ID] = true
+	}
+	return allHallOrders, availableElevators
+}
+
 func RunOrderManager(
 	id string,
 	localElevatorChan <-chan elev_struct.Elevator,
@@ -224,19 +234,8 @@ func RunOrderManager(
 		case localElevator := <-localElevatorChan:
 			allElevatorStates[id] = localElevator
 
-			if localElevator.Stuck && availableElevators[id] {
-				dataMutex.Lock()
-				availableElevators[id] = false
-				allHallOrders = lostPeerReassignOrders(id, allHallOrders, availableElevators)
-				dataMutex.Unlock()
-				clearLocalHallOrdersChan <- true
-			} else if !localElevator.Stuck && !availableElevators[id] {
-				dataMutex.Lock()
-				availableElevators[id] = true
-				dataMutex.Unlock()
-			}
-
 			dataMutex.Lock()
+			allHallOrders, availableElevators = checkStuckUpdateAvailable(localElevator, allHallOrders, availableElevators)
 			allHallOrders[id] = AddNewLocalOrder(allHallOrders[id], localElevator.Requests)
 			dataMutex.Unlock()
 
@@ -245,10 +244,9 @@ func RunOrderManager(
 		case remoteElevator := <-network.NetworkRxChan():
 			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], fromNetworkHallOrders(remoteElevator.HallOrders)) //this function is added now as long as the HallORders stuff is not working
 
-			//TODO er stuck?
-
 			dataMutex.Lock()
 			allHallOrders[id] = newHallOrder
+			allHallOrders, availableElevators = checkStuckUpdateAvailable(remoteElevator.ElevatorState, allHallOrders, availableElevators)
 			dataMutex.Unlock()
 
 		case newCompletedOrder := <-completedOrderChan:
@@ -289,13 +287,14 @@ func RunOrderManager(
 					}
 				}
 			}
-			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
-
 			hallOrdersForId, _ := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
 			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
-
+			
 			dataMutex.Unlock()
 
+			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
+
+			clearLocalHallOrdersChan <- true
 			for floor := 0; floor < config.N_FLOORS; floor++ {
 				for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 					if hallOrdersForId[floor][btn] {
@@ -316,8 +315,9 @@ func RunOrderManager(
 					}
 				}
 			}
-			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
 			dataMutex.Unlock()
+			
+			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
 
 		case hallLightEvent := <-hallLightChan:
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
