@@ -14,103 +14,96 @@ const (
 )
 
 func OnRequestButtonPress(
-	e elev_struct.Elevator,
+	elev elev_struct.Elevator,
 	btnFloor int,
 	btnType elevio.ButtonType,
 	doorTimer *time.Timer,
 	stuckTimer *time.Timer,
 	completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
 
-	localElevator := e
-
-	switch localElevator.State {
+	switch elev.State {
 	case elev_struct.DoorOpen:
-		if requests.RequestsShouldClearImmediately(localElevator, btnFloor, btnType) {
+		if requests.RequestsShouldClearImmediately(elev, btnFloor, btnType) {
 			completed_order_chan <- elevio.ButtonEvent{Floor: btnFloor, Button: btnType}
 			doorTimer.Reset(DOOR_OPEN_TIME)
 			stuckTimer.Reset(STALL_TIME)
 		} else {
-			localElevator.Requests[btnFloor][btnType] = true
+			elev.Requests[btnFloor][btnType] = true
 		}
 
 	case elev_struct.Moving:
-		localElevator.Requests[btnFloor][btnType] = true
+		elev.Requests[btnFloor][btnType] = true
 
 	case elev_struct.Idle:
-		localElevator.Requests[btnFloor][btnType] = true
-		var nextAction elev_struct.DirStatePair = requests.RequestsChooseDirection(localElevator)
-		localElevator.Dir = nextAction.Dir
-		localElevator.State = nextAction.State
+		elev.Requests[btnFloor][btnType] = true
+		var nextAction elev_struct.DirStatePair = requests.RequestsChooseDirection(elev)
+		elev.Dir = nextAction.Dir
+		elev.State = nextAction.State
 		switch nextAction.State {
 		case elev_struct.DoorOpen:
 			elevio.SetDoorOpenLamp(true)
 			doorTimer.Reset(DOOR_OPEN_TIME)
 			stuckTimer.Reset(STALL_TIME)
-			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, completed_order_chan)
+			elev = requests.RequestsClearAtCurrentFloor(elev, completed_order_chan)
 
 		case elev_struct.Moving:
-			elevio.SetMotorDirection(localElevator.Dir)
+			elevio.SetMotorDirection(elev.Dir)
 			stuckTimer.Reset(STALL_TIME)
 
 		case elev_struct.Idle:
 		}
 	}
 
-	elev_struct.SetCabLights(localElevator)
+	elev_struct.SetCabLights(elev)
 
-	return localElevator
+	return elev
 }
 
-func OnFloorArrival(e elev_struct.Elevator, newFloor int, doorTimer *time.Timer, completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
-	localElevator := e
-	localElevator.Floor = newFloor
-	elevio.SetFloorIndicator(localElevator.Floor)
+func OnFloorArrival(elev elev_struct.Elevator, newFloor int, doorTimer *time.Timer, completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
+	elev.Floor = newFloor
+	elevio.SetFloorIndicator(elev.Floor)
 
-	switch localElevator.State {
+	switch elev.State {
 	case elev_struct.Moving:
-		if requests.RequestsShouldStop(localElevator) {
+		if requests.RequestsShouldStop(elev) {
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
-			localElevator.State = elev_struct.DoorOpen
-			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, completed_order_chan)
+			elev.State = elev_struct.DoorOpen
+			elev = requests.RequestsClearAtCurrentFloor(elev, completed_order_chan)
 			doorTimer.Reset(DOOR_OPEN_TIME)
-			elev_struct.SetCabLights(localElevator)
+			elev_struct.SetCabLights(elev)
 		}
 	}
 
-	return localElevator
+	return elev
 }
 
-func OnDoorTimeout(e elev_struct.Elevator, doorTimer *time.Timer, completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
-	localElevator := e
-
-	switch localElevator.State {
+func OnDoorTimeout(elev elev_struct.Elevator, doorTimer *time.Timer, completed_order_chan chan<- elevio.ButtonEvent) elev_struct.Elevator {
+	switch elev.State {
 	case elev_struct.DoorOpen:
-		nextAction := requests.RequestsChooseDirection(localElevator)
-		localElevator.Dir = nextAction.Dir
-		localElevator.State = nextAction.State
+		nextAction := requests.RequestsChooseDirection(elev)
+		elev.Dir = nextAction.Dir
+		elev.State = nextAction.State
 
-		switch localElevator.State {
+		switch elev.State {
 		case elev_struct.DoorOpen:
 			doorTimer.Reset(DOOR_OPEN_TIME)
-			localElevator = requests.RequestsClearAtCurrentFloor(localElevator, completed_order_chan)
-			elev_struct.SetCabLights(localElevator)
+			elev = requests.RequestsClearAtCurrentFloor(elev, completed_order_chan)
+			elev_struct.SetCabLights(elev)
 
 		case elev_struct.Moving:
 			fallthrough
 
 		case elev_struct.Idle:
 			elevio.SetDoorOpenLamp(false)
-			elevio.SetMotorDirection(localElevator.Dir)
+			elevio.SetMotorDirection(elev.Dir)
 		}
 	}
-	return localElevator
+	return elev
 }
 
-func OnObstruction(e elev_struct.Elevator, doorTimer *time.Timer) {
-	localElevator := e
-
-	switch localElevator.State {
+func OnObstruction(elev elev_struct.Elevator, doorTimer *time.Timer) {
+	switch elev.State {
 	case elev_struct.DoorOpen:
 		doorTimer.Reset(DOOR_OPEN_TIME)
 	}
