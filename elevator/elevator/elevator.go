@@ -29,16 +29,21 @@ func RunElevator(
 	elevator := elev_struct.ElevatorInit(id)
 	elevator.Floor = elevio.GetFloor()
 
-	if elevator.Floor == -1 {
-		elevio.SetMotorDirection(elevio.MD_Down)
-		for {
-			floor := elevio.GetFloor()
-			if floor != -1 {
-				elevio.SetMotorDirection(elevio.MD_Stop)
-				break
-			}
-		}
-	}
+	// if elevator.Floor == -1 {
+	// 	elevio.SetMotorDirection(elevio.MD_Down)
+	// 	elevator.Dir = elevio.MD_Down
+	// 	elevator.State = elev_struct.Moving
+	// 	for {
+	// 		floor := elevio.GetFloor()
+	// 		if floor != -1 {
+	// 			elevio.SetMotorDirection(elevio.MD_Stop)
+	// 			elevator.Floor = floor
+	// 			elevator.Dir = elevio.MD_Stop
+	// 			elevator.State = elev_struct.Idle
+	// 			break
+	// 		}
+	// 	}
+	// }
 
 	doorTimer := time.NewTimer(DOOR_OPEN_TIME)
 	stuckTimer := time.NewTimer(STALL_TIME)
@@ -102,6 +107,18 @@ func RunElevator(
 
 func ElevatorInit(id string, clear_local_hall_orders <-chan bool, completed_order chan<- elevio.ButtonEvent, assigned_orders chan elevio.ButtonEvent, elev_out chan<- elev_struct.Elevator) {
 	elevio.Init("localhost:15657", config.N_FLOORS)
+
+	startFloor := elevio.GetFloor()
+	if startFloor == -1 {
+		elevio.SetMotorDirection(elevio.MD_Down)
+		for {
+			floor := elevio.GetFloor()
+			if floor != -1 {
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				break
+			}
+		}
+	}
 
 	drv_buttons := make(chan elevio.ButtonEvent)
 	drv_floors := make(chan int)

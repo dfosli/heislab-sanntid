@@ -89,14 +89,21 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 		for floor := 0; floor < elev_struct.N_FLOORS; floor++ {
 			cabRequests = append(cabRequests, allElevatorStates[id].Requests[floor][elevio.BT_Cab])
 		}
+		floor := allElevatorStates[id].Floor
+		if floor < 0 {
+			floor = 0
+		}
 		states[id] = StateInputForDistributor{
 			State: stateToString(allElevatorStates[id]),
-			Floor: allElevatorStates[id].Floor,
+			Floor: floor,
 			Direction: directionToString(allElevatorStates[id]),
 			CabRequests: cabRequests,
 		}
 	}
-
+	if len(states) == 0 {
+		return nil
+	}
+	
 	fullInput := DistributorInput{
 		HallRequests: hallRequests,
 		States:       states,
