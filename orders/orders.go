@@ -24,13 +24,6 @@ const (
 
 type HallOrdersAllElevators map[string]HallOrders
 
-type AllElevatorStates map[string]elev_struct.Elevator
-
-type ElevstateHallorderPair struct { //TODO endre navn
-	elevatorState elev_struct.Elevator
-	hallOrders    HallOrders
-}
-
 func initHallOrders() HallOrders {
 	var hallOrders HallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
@@ -47,10 +40,10 @@ func initHallOrdersAllElevators(id string) HallOrdersAllElevators {
 	return allHallOrders
 }
 
-func initAllElevatorStates(id string) AllElevatorStates {
-	allElevatorStates := make(AllElevatorStates)
-	allElevatorStates[id] = elev_struct.ElevatorInit(id)
-	return allElevatorStates
+func initAllElevators(id string) types.AllElevators {
+	allElevators := make(types.AllElevators)
+	allElevators[id] = elev_struct.ElevatorInit(id)
+	return allElevators
 }
 
 func toNetworkHallOrders(hallOrders HallOrders) types.HallOrders {
@@ -186,7 +179,7 @@ func lostPeerReassignOrders(lost_id string, allHallOrders HallOrdersAllElevators
 
 func RunOrderManager(
 	id string,
-	localElevatorChan <-chan elev_struct.Elevator,
+	localElevatorChan <-chan types.Elevator,
 	assignOrderChan chan<- elevio.ButtonEvent,
 	completedOrderChan <-chan elevio.ButtonEvent,
 	clearLocalHallOrdersChan chan<- bool,
@@ -194,7 +187,7 @@ func RunOrderManager(
 	orderConfirmedChan <-chan elevio.ButtonEvent,
 	orderResetChan <-chan elevio.ButtonEvent,
 	allHallOrders HallOrdersAllElevators,
-	allElevatorStates AllElevatorStates,
+	allElevators types.AllElevators,
 	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
 
@@ -222,7 +215,7 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 		case localElevator := <-localElevatorChan:
-			allElevatorStates[id] = localElevator
+			allElevators[id] = localElevator
 
 			if localElevator.Stuck && availableElevators[id] {
 				dataMutex.Lock()
@@ -262,7 +255,7 @@ func RunOrderManager(
 				// 	HallOrders    types.HallOrders
 				// 	ElevatorState types.ElevatorState
 				// }
-				network.NetworkSend(id, toNetworkHallOrders(allHallOrders[id]), allElevatorStates[id])
+				network.NetworkSend(allElevators[id], allHallOrders[id])
 			}
 			dataMutex.Unlock()
 
@@ -291,7 +284,7 @@ func RunOrderManager(
 			}
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
 
-			hallOrdersForId, _ := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
+			hallOrdersForId, _ := ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
 			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
 
 			dataMutex.Unlock()
@@ -304,7 +297,7 @@ func RunOrderManager(
 				}
 			}
 
-			//network.NetworkSend()
+			network.NetworkSend(allElevators[id], allHallOrders[id])
 
 		case orderToReset := <-orderResetChan:
 			dataMutex.Lock()
@@ -323,7 +316,7 @@ func RunOrderManager(
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
 
 		default:
-			//network.NetworkSend()
+			network.NetworkSend(allElevators[id], allHallOrders[id])
 		}
 	}
 }
@@ -332,10 +325,10 @@ func OrdersInit(id string,
 	clear_local_hall_orders_chan chan<- bool,
 	completed_order_chan <-chan elevio.ButtonEvent,
 	assign_order_chan chan<- elevio.ButtonEvent,
-	local_elevator_chan <-chan elev_struct.Elevator) {
+	localElevatorChan <-chan types.Elevator) {
 
 	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
-	var allElevatorStates = initAllElevatorStates(id)
+	var allElevators = initAllElevators(id)
 	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
 	availableElevators[id] = true
 	var dataMutex sync.RWMutex
@@ -349,7 +342,7 @@ func OrdersInit(id string,
 
 	go RunOrderManager(
 		id,
-		local_elevator_chan,
+		localElevatorChan,
 		assign_order_chan,
 		completed_order_chan,
 		clear_local_hall_orders_chan,
@@ -357,7 +350,7 @@ func OrdersInit(id string,
 		order_confirmed_chan,
 		order_reset_chan,
 		allHallOrders,
-		allElevatorStates,
+		allElevators,
 		availableElevators,
 		&dataMutex)
 }

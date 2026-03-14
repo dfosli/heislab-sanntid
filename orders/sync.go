@@ -5,6 +5,7 @@ import (
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
 	"heislab-sanntid/elevator/elev_struct"
+	types "heislab-sanntid/types"
 )
 
 func updateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderState OrderState) bool {
@@ -53,15 +54,10 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
 	return hallRequests
 }
 
-func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator) ([][]bool, error) {
-
+func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevators types.AllElevators) ([][]bool, error) {
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
-	formattedOrders := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevatorStates)
-	if formattedOrders == nil {
-		return nil, fmt.Errorf("no available elevators to assign orders")
-	}
+	formattedOrders := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevators)
 	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
-
 	if err != nil {
 		return nil, fmt.Errorf("call distributor: %w", err)
 	}
