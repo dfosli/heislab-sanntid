@@ -7,9 +7,8 @@ import (
 )
 
 type NetworkMsg struct {
-	ID            string
-	HallOrders    types.HallOrders
-	ElevatorState types.ElevatorState
+	Elevator   types.Elevator
+	HallOrders types.HallOrders
 }
 
 var (
@@ -38,12 +37,9 @@ func NetworkInit(id string) {
 	go bcast.Transmitter(16569, networkTx)
 	go bcast.Receiver(16569, networkRx)
 }
-func NetworkSend(msg NetworkMsg) {
+func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders) {
+	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders}
 	networkTx <- msg
-}
-
-func NewNetworkMsg(id string, hallOrders types.HallOrders, elevatorState types.ElevatorState) NetworkMsg {
-	return NetworkMsg{ID: id, HallOrders: hallOrders, ElevatorState: elevatorState}
 }
 
 func NetworkRxChan() <-chan NetworkMsg {
