@@ -11,17 +11,16 @@ import (
 	"time"
 )
 
-type OrderState int
+type OrderState = types.OrderState
+type HallOrders = types.HallOrders
 
 const (
-	NONE OrderState = iota
-	NEW
-	CONFIRMED
-	ASSIGNED
-	COMPLETED
+	NONE      = types.NONE
+	NEW       = types.NEW
+	CONFIRMED = types.CONFIRMED
+	ASSIGNED  = types.ASSIGNED
+	COMPLETED = types.COMPLETED
 )
-
-type HallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
 
 type HallOrdersAllElevators map[string]HallOrders
 
@@ -257,7 +256,13 @@ func RunOrderManager(
 			if orders, ok := allHallOrders[id]; ok {
 				orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
 				allHallOrders[id] = orders
-				//network.NetworkSend()
+
+				// type NetworkMsg struct {
+				// 	ID            string
+				// 	HallOrders    types.HallOrders
+				// 	ElevatorState types.ElevatorState
+				// }
+				network.NetworkSend(id, toNetworkHallOrders(allHallOrders[id]), allElevatorStates[id])
 			}
 			dataMutex.Unlock()
 
