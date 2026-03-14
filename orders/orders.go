@@ -245,7 +245,7 @@ func RunOrderManager(
 
 		case remoteElevator := <-network.NetworkRxChan():
 			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], fromNetworkHallOrders(remoteElevator.HallOrders)) //this function is added now as long as the HallORders stuff is not working
-
+			
 			//TODO er stuck?
 
 			dataMutex.Lock()
@@ -286,7 +286,12 @@ func RunOrderManager(
 			}
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
 
-			hallOrdersForId, _ := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
+			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
+			if err != nil {
+				dataMutex.Unlock()
+				continue
+			}
+
 			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
 
 			dataMutex.Unlock()
