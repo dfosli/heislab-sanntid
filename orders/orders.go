@@ -244,7 +244,7 @@ func RunOrderManager(
 
 			dataMutex.Lock()
 			allHallOrders[id] = newHallOrder
-			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(remoteElevator.ElevatorState, allHallOrders, availableElevators)
+			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(remoteElevator.Elevator, allHallOrders, availableElevators)
 			dataMutex.Unlock()
 
 		case newCompletedOrder := <-completedOrderChan:
