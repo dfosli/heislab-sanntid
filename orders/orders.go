@@ -221,7 +221,7 @@ func RunOrderManager(
 			for _, lostPeer := range peerUpdate.Lost {
 				availableElevators[lostPeer] = false
 				allHallOrders = lostPeerReassignOrders(lostPeer, allHallOrders, availableElevators)
-				clearLocalHallOrdersChan <- true
+				clearLocalHallOrdersChan <- true //riktig?
 			}
 			dataMutex.Unlock()
 
@@ -239,6 +239,10 @@ func RunOrderManager(
 				availableElevators[id] = true
 				dataMutex.Unlock()
 			}
+
+			dataMutex.Lock()
+			allHallOrders[id] = AddNewLocalOrder(allHallOrders[id], localElevator.Requests)
+			dataMutex.Unlock()
 
 			//network.NetworkSend()
 			
