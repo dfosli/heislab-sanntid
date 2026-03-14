@@ -52,11 +52,9 @@ func directionToString(elevator types.Elevator) string {
 	}
 	return directionStrings[elevator.Dir]
 }
-<<<<<<< HEAD
-func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[string]bool, allElevatorStates map[string]elev_struct.Elevator) ([]byte, error) {
-=======
-func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[string]bool, allElevators types.AllElevators) any {
->>>>>>> David4
+
+func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[string]bool, allElevators types.AllElevators) ([]byte, error) {
+
 	/* input format for distributor looks like this:
 		{
 	    "hallRequests" :
@@ -121,6 +119,7 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 	if err != nil {
 		return nil, fmt.Errorf("marshal error: %w", err)
 	}
+	
 	return data, nil
 }
 

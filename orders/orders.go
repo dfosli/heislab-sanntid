@@ -286,16 +286,11 @@ func RunOrderManager(
 				}
 			}
 
-<<<<<<< HEAD
-			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevatorStates)
+			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
 			if err != nil {
 				dataMutex.Unlock()
 				continue
 			}
-=======
-			hallOrdersForId, _ := ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
-			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
->>>>>>> David4
 
 			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])			
 			dataMutex.Unlock()

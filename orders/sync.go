@@ -56,7 +56,11 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [][]bool {
 
 func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevators types.AllElevators) ([][]bool, error) {
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
-	formattedOrders := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevators)
+	formattedOrders, err := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevators)
+	if err != nil {
+		return nil, fmt.Errorf("format input for distributor: %w", err)
+	}
+	
 	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
 	if err != nil {
 		return nil, fmt.Errorf("call distributor: %w", err)
