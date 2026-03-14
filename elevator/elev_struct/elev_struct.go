@@ -52,28 +52,26 @@ func ElevatorInit(id string) Elevator {
 	}
 }
 
-func ClearLocalHallOrders(e Elevator) Elevator {
-	localElevator := e
-
+func ClearLocalHallOrders(elev Elevator) Elevator {
 	for f := 0; f < N_FLOORS; f++ {
 		for btn := 0; btn < N_BUTTONS; btn++ {
-			localElevator.Requests[f][btn] = false
+			elev.Requests[f][btn] = false
 		}
 	}
-	return localElevator
+	return elev
 }
 
-func GetCabOrders(e Elevator) [N_FLOORS]bool {
+func GetCabOrders(elev Elevator) [N_FLOORS]bool {
 	var cabOrders [N_FLOORS]bool
 
 	for f := 0; f < N_FLOORS; f++ {
-		cabOrders[f] = e.Requests[f][elevio.BT_Cab]
+		cabOrders[f] = elev.Requests[f][elevio.BT_Cab]
 	}
 	return cabOrders
 }
 
-func SetCabLights(e Elevator) {
+func SetCabLights(elev Elevator) {
 	for f := 0; f < N_FLOORS; f++ {
-		elevio.SetButtonLamp(elevio.BT_Cab, f, e.Requests[f][elevio.BT_Cab])
+		elevio.SetButtonLamp(elevio.BT_Cab, f, elev.Requests[f][elevio.BT_Cab])
 	}
 }

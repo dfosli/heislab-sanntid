@@ -29,22 +29,6 @@ func RunElevator(
 	elevator := elev_struct.ElevatorInit(id)
 	elevator.Floor = elevio.GetFloor()
 
-	// if elevator.Floor == -1 {
-	// 	elevio.SetMotorDirection(elevio.MD_Down)
-	// 	elevator.Dir = elevio.MD_Down
-	// 	elevator.State = elev_struct.Moving
-	// 	for {
-	// 		floor := elevio.GetFloor()
-	// 		if floor != -1 {
-	// 			elevio.SetMotorDirection(elevio.MD_Stop)
-	// 			elevator.Floor = floor
-	// 			elevator.Dir = elevio.MD_Stop
-	// 			elevator.State = elev_struct.Idle
-	// 			break
-	// 		}
-	// 	}
-	// }
-
 	doorTimer := time.NewTimer(DOOR_OPEN_TIME)
 	stuckTimer := time.NewTimer(STALL_TIME)
 
