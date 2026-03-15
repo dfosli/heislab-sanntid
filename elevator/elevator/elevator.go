@@ -95,8 +95,15 @@ func RunElevator(
 	}
 }
 
-func ElevatorInit(id string, clear_local_hall_orders <-chan bool, completed_order chan<- elevio.ButtonEvent, assigned_orders chan elevio.ButtonEvent, elev_out chan<- elev_struct.Elevator) {
-	elevio.Init("localhost:15657", config.N_FLOORS)
+func ElevatorInit(
+	id string, 
+	port string,
+	clear_local_hall_orders <-chan bool, 
+	completed_order chan<- elevio.ButtonEvent, 
+	assigned_orders chan elevio.ButtonEvent, 
+	elev_out chan<- elev_struct.Elevator) {
+
+	elevio.Init("localhost:" + port, config.N_FLOORS)
 
 	startFloor := elevio.GetFloor()
 	if startFloor == -1 {
