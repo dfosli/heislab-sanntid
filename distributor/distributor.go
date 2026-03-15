@@ -112,8 +112,8 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 		States:       states,
 	}
 
-	debugData, _ := json.MarshalIndent(fullInput, "", "  ")
-	fmt.Println(string(debugData))
+	// debugData, _ := json.MarshalIndent(fullInput, "", "  ")
+	// fmt.Println(string(debugData))
 
 	data, err := json.Marshal(fullInput)
 	if err != nil {

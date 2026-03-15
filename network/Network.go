@@ -4,6 +4,7 @@ import (
 	"heislab-sanntid/network/network/bcast"
 	"heislab-sanntid/network/network/peers"
 	"heislab-sanntid/types"
+	"heislab-sanntid/config"
 )
 
 type NetworkMsg struct {
@@ -20,7 +21,7 @@ var (
 
 func NetworkInit(id string) {
 
-	peerUpdateCh = make(chan peers.PeerUpdate)
+	peerUpdateCh = make(chan peers.PeerUpdate, config.BUFFER_SIZE)
 	// We can disable/enable the transmitter after it has been started.
 	// This could be used to signal that we are somehow "unavailable".
 	peerTxEnable = make(chan bool)
@@ -29,8 +30,8 @@ func NetworkInit(id string) {
 	go peers.Receiver(15647, peerUpdateCh)
 
 	// We make channels for sending and receiving our custom data types
-	networkTx = make(chan NetworkMsg)
-	networkRx = make(chan NetworkMsg)
+	networkTx = make(chan NetworkMsg, config.BUFFER_SIZE)
+	networkRx = make(chan NetworkMsg, config.BUFFER_SIZE)
 	// ... and start the transmitter/receiver pair on some port
 	// These functions can take any number of channels! It is also possible to
 	//  start multiple transmitters/receivers on the same port.
@@ -54,7 +55,7 @@ func SetPeerTxEnable(enable bool) {
 	peerTxEnable <- enable
 }
 
-func HasVisiblePeers() bool {
+func HasVisiblePeers() bool { //! denne funksjonen leser rett fra kanalen, og "stjeler" oppdateringer fra hovedløkken i orders.go. Det er kanskje
 	select {
 	case peers := <-peerUpdateCh:
 		if len(peers.Peers) > 0 {

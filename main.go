@@ -1,9 +1,9 @@
 package main
 
 import (
+	elevio "Driver-go"
 	"flag"
 	"fmt"
-	elevio "Driver-go"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/elevator"
@@ -11,6 +11,7 @@ import (
 	"heislab-sanntid/network/network/localip"
 	"heislab-sanntid/orders"
 	"os"
+	"time"
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	}
 
-	elev_out_chan := make(chan elev_struct.Elevator)
+	elev_out_chan := make(chan elev_struct.Elevator, config.BUFFER_SIZE)
 	clear_local_hall_orders_chan := make(chan bool, config.BUFFER_SIZE)
 	completed_order_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 	assigned_orders_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
@@ -37,23 +38,7 @@ func main() {
 	elevator.ElevatorInit(id, clear_local_hall_orders_chan, completed_order_chan, assigned_orders_chan, elev_out_chan)
 	orders.OrdersInit(id, clear_local_hall_orders_chan, completed_order_chan, assigned_orders_chan, elev_out_chan)
 
-	// KUN FOR Å SIMULERE EN ENKELT HEIS
-	// go func() { //black hole for channels, channels blocker programmet hvis ingen leser fra dem
-	// 	for {
-	// 		select {
-	// 		case e := <-elev_out:
-	// 			for f := 0; f < config.N_FLOORS; f++ { //setter alle lys her, kun for simulatoren
-	// 				for btn := 0; btn < config.N_BUTTONS; btn++ {
-	// 					elevio.SetButtonLamp(elevio.ButtonType(btn), f, e.Requests[f][btn])
-	// 					time.Sleep(10 * time.Millisecond)
-	// 				}
-	// 			}
-	// 		case <-clear_order:
-	// 		case <-clear_local_hall_orders:
-	// 		}
-	// 	}
-	// }()
-
 	for {
+		time.Sleep(100 * time.Millisecond)
 	}
 }

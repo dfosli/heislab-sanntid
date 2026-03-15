@@ -74,6 +74,7 @@ func confirmHallOrders(
 
 	for {
 		time.Sleep(10 * time.Millisecond)
+		var ordersToConfirm []elevio.ButtonEvent
 
 		dataMutex.RLock()
 
@@ -97,11 +98,18 @@ func confirmHallOrders(
 				}
 
 				if shouldConfirm {
-					order_confirmed_chan <- elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)}
+					ordersToConfirm = append(ordersToConfirm, elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)})
 				}
 			}
 		}
 		dataMutex.RUnlock()
+
+		for _, event := range ordersToConfirm {
+			select {
+			case order_confirmed_chan <- event:
+			default:
+			}
+		}
 	}
 }
 
@@ -113,6 +121,7 @@ func resetHallOrders(
 
 	for {
 		time.Sleep(10 * time.Millisecond)
+		var ordersToReset []elevio.ButtonEvent
 
 		dataMutex.RLock()
 
@@ -136,11 +145,18 @@ func resetHallOrders(
 				}
 
 				if shouldReset {
-					order_reset_chan <- elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)}
+					ordersToReset = append(ordersToReset, elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)})
 				}
 			}
 		}
 		dataMutex.RUnlock()
+
+		for _, event := range ordersToReset {
+			select {
+			case order_reset_chan <- event:
+			default:
+			}
+		}
 	}
 }
 
@@ -208,7 +224,13 @@ func RunOrderManager(
 			dataMutex.Lock()
 			for _, peer := range peerUpdate.Peers {
 				if peer != id {
-					availableElevators[peer] = true
+					if _, ok := availableElevators[peer]; !ok {
+						availableElevators[peer] = true
+						allHallOrders[peer] = initHallOrders()
+						allElevators[peer] = elev_struct.ElevatorInit(peer)
+					} else {
+						availableElevators[peer] = true
+					}
 					// unassigne ordre her slik at de blir fordelt på de tilgjengelige?
 					// men da vil det kanskje reassignes hver gang det kommer en peer update...
 				}
@@ -216,7 +238,7 @@ func RunOrderManager(
 
 			// Needed? DB
 			// Could leed to fatal problems. DB
-			availableElevators[peerUpdate.New] = true
+			// availableElevators[peerUpdate.New] = true //! New starter som [] og det blir da lagt til en ny heis med tom id. Har derfor kommentert ut
 
 			for _, lostPeer := range peerUpdate.Lost {
 				if lostPeer == id {
@@ -235,15 +257,17 @@ func RunOrderManager(
 			dataMutex.Lock()
 			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(localElevator, allHallOrders, availableElevators)
 			allHallOrders[id] = AddNewLocalOrder(allHallOrders[id], localElevator.Requests)
+			
+			network.NetworkSend(allElevators[id], allHallOrders[id])
 			dataMutex.Unlock()
 
-			//network.NetworkSend()
-
 		case remoteElevator := <-network.NetworkRxChan():
-			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], fromNetworkHallOrders(remoteElevator.HallOrders)) //this function is added now as long as the HallORders stuff is not working
-
 			dataMutex.Lock()
+			allElevators[remoteElevator.Elevator.ID] = remoteElevator.Elevator
+
+			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], fromNetworkHallOrders(remoteElevator.HallOrders)) //this function is added now as long as the HallOrders stuff is not working
 			allHallOrders[id] = newHallOrder
+			
 			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(remoteElevator.Elevator, allHallOrders, availableElevators)
 			dataMutex.Unlock()
 
@@ -258,6 +282,7 @@ func RunOrderManager(
 				// 	HallOrders    types.HallOrders
 				// 	ElevatorState types.ElevatorState
 				// }
+
 				network.NetworkSend(allElevators[id], allHallOrders[id])
 			}
 			dataMutex.Unlock()
@@ -277,11 +302,11 @@ func RunOrderManager(
 				continue
 			}
 
-			for id, isAvailable := range availableElevators {
+			for elev_id, isAvailable := range availableElevators {
 				if isAvailable {
-					if orders, ok := allHallOrders[id]; ok {
+					if orders, ok := allHallOrders[elev_id]; ok {
 						orders[orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
-						allHallOrders[id] = orders
+						allHallOrders[elev_id] = orders
 					}
 				}
 			}
@@ -306,7 +331,9 @@ func RunOrderManager(
 				}
 			}
 
+			dataMutex.RLock()
 			network.NetworkSend(allElevators[id], allHallOrders[id])
+			dataMutex.RUnlock()
 
 		case orderToReset := <-orderResetChan:
 			dataMutex.Lock()
@@ -326,7 +353,9 @@ func RunOrderManager(
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
 
 		default:
+			dataMutex.RLock()
 			network.NetworkSend(allElevators[id], allHallOrders[id])
+			dataMutex.RUnlock()
 		}
 	}
 }

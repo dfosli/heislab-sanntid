@@ -45,7 +45,10 @@ func RunElevator(
 				assigned_orders_chan <- btnEvent
 			}
 
-			elev_out_chan <- elevatorWithNewOrder
+			select {
+			case elev_out_chan <- elevatorWithNewOrder:
+			default:
+			}
 
 		case btnEvent := <-assigned_orders_chan:
 			elevator = state_machine.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, completed_order_chan)
@@ -80,10 +83,13 @@ func RunElevator(
 			}
 
 		default:
-			elev_out_chan <- elevator
-
 			if elevator.Obstructed {
 				state_machine.OnObstruction(elevator, doorTimer)
+			}
+			
+			select {
+			case elev_out_chan <- elevator:
+			default:
 			}
 		}
 	}
