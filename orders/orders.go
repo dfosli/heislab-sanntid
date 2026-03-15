@@ -68,10 +68,13 @@ func fromNetworkHallOrders(networkHallOrders types.HallOrders) HallOrders {
 }
 
 func confirmHallOrders(
+	localID string,
 	order_confirmed_chan chan<- elevio.ButtonEvent,
 	allHallOrders *HallOrdersAllElevators,
 	availableElevators *map[string]bool,
 	dataMutex *sync.RWMutex) {
+
+	var confirmAlreadySent [config.N_FLOORS][config.N_BUTTONS - 1]bool
 
 	for {
 		time.Sleep(10 * time.Millisecond)
@@ -90,27 +93,20 @@ func confirmHallOrders(
 			continue
 		}
 
+		localOrders, ok := (*allHallOrders)[localID]
+		if !ok {
+			dataMutex.RUnlock()
+			continue
+		}
+
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-
-				shouldConfirm := true
-
-				for id, isAvailable := range *availableElevators {
-					if isAvailable {
-						if orders, ok := (*allHallOrders)[id]; ok {
-							if orders[floor][btn] != NEW {
-								shouldConfirm = false
-								break
-							}
-						} else {
-							shouldConfirm = false
-							break
-						}
-					}
-				}
-
-				if shouldConfirm {
+				shouldConfirm := localOrders[floor][btn] == NEW
+				if shouldConfirm && !confirmAlreadySent[floor][btn] {
+					confirmAlreadySent[floor][btn] = true
 					ordersToConfirm = append(ordersToConfirm, elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)})
+				} else if !shouldConfirm {
+					confirmAlreadySent[floor][btn] = false
 				}
 			}
 		}
@@ -123,10 +119,13 @@ func confirmHallOrders(
 }
 
 func resetHallOrders(
+	localID string,
 	order_reset_chan chan<- elevio.ButtonEvent,
 	allHallOrders *HallOrdersAllElevators,
 	availableElevators *map[string]bool,
 	dataMutex *sync.RWMutex) {
+
+	var resetAlreadySent [config.N_FLOORS][config.N_BUTTONS - 1]bool
 
 	for {
 		time.Sleep(10 * time.Millisecond)
@@ -145,27 +144,20 @@ func resetHallOrders(
 			continue
 		}
 
+		localOrders, ok := (*allHallOrders)[localID]
+		if !ok {
+			dataMutex.RUnlock()
+			continue
+		}
+
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-
-				shouldReset := true
-
-				for id, isAvailable := range *availableElevators {
-					if isAvailable {
-						if orders, ok := (*allHallOrders)[id]; ok {
-							if orders[floor][btn] != COMPLETED {
-								shouldReset = false
-								break
-							}
-						} else {
-							shouldReset = false
-							break
-						}
-					}
-				}
-
-				if shouldReset {
+				shouldReset := localOrders[floor][btn] == COMPLETED
+				if shouldReset && !resetAlreadySent[floor][btn] {
+					resetAlreadySent[floor][btn] = true
 					ordersToReset = append(ordersToReset, elevio.ButtonEvent{Floor: floor, Button: elevio.ButtonType(btn)})
+				} else if !shouldReset {
+					resetAlreadySent[floor][btn] = false
 				}
 			}
 		}
@@ -426,8 +418,8 @@ func OrdersInit(id string,
 	order_reset_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 	hall_light_chan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
 
-	go confirmHallOrders(order_confirmed_chan, &allHallOrders, &availableElevators, &dataMutex)
-	go resetHallOrders(order_reset_chan, &allHallOrders, &availableElevators, &dataMutex)
+	go confirmHallOrders(id, order_confirmed_chan, &allHallOrders, &availableElevators, &dataMutex)
+	go resetHallOrders(id, order_reset_chan, &allHallOrders, &availableElevators, &dataMutex)
 
 	go RunOrderManager(
 		id,
