@@ -308,6 +308,10 @@ func RunOrderManager(
 
 		case newCompletedOrder := <-completedOrderChan:
 			log.Printf("orders: completedOrderChan case")
+			if newCompletedOrder.Button == elevio.BT_Cab {
+				continue
+			}
+			
 			dataMutex.Lock()
 			if orders, ok := allHallOrders[id]; ok {
 				orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
