@@ -218,12 +218,15 @@ func RunOrderManager(
 	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
 
+	networkResendTicker := time.NewTicker(100 * time.Millisecond)
+	defer networkResendTicker.Stop()
+
 	for {
 		select {
 		// Unsure if peers returns IDs. Will be tested. DB
 		case peerUpdate := <-network.Peers():
-			log.Printf("orders: peerUpdate case")
 			dataMutex.Lock()
+			log.Printf("orders: peer update case, peers: %v", peerUpdate.Peers)
 			for _, peer := range peerUpdate.Peers {
 				if peer != id {
 					if _, ok := availableElevators[peer]; !ok {
@@ -364,10 +367,13 @@ func RunOrderManager(
 			log.Printf("orders: hallLightChan case")
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
 
-			// default:
-			// dataMutex.RLock()
-			// network.NetworkSend(allElevators[id], allHallOrders[id])
-			// dataMutex.RUnlock()
+		case <-networkResendTicker.C:
+			dataMutex.RLock()
+			elevatorSnapshot := allElevators[id]
+			hallOrdersSnapshot := allHallOrders[id]
+			dataMutex.RUnlock()
+
+			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot)
 		}
 	}
 }

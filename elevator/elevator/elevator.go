@@ -31,6 +31,8 @@ func RunElevator(
 
 	doorTimer := time.NewTimer(DOOR_OPEN_TIME)
 	stuckTimer := time.NewTimer(STALL_TIME)
+	publishTicker := time.NewTicker(20 * time.Millisecond)
+	defer publishTicker.Stop()
 
 	for {
 		select {
@@ -45,10 +47,7 @@ func RunElevator(
 				assigned_orders_chan <- btnEvent
 			}
 
-			select {
-			case elev_out_chan <- elevatorWithNewOrder:
-			default:
-			}
+			elev_out_chan <- elevatorWithNewOrder
 
 		case btnEvent := <-assigned_orders_chan:
 			elevator = state_machine.OnRequestButtonPress(elevator, btnEvent.Floor, btnEvent.Button, doorTimer, stuckTimer, completed_order_chan)
@@ -82,28 +81,24 @@ func RunElevator(
 				log.Printf("stuck timer case")
 			}
 
-		default:
+		case <-publishTicker.C:
 			if elevator.Obstructed {
 				state_machine.OnObstruction(elevator, doorTimer)
 			}
-			
-			select {
-			case elev_out_chan <- elevator:
-			default:
-			}
+			elev_out_chan <- elevator
 		}
 	}
 }
 
 func ElevatorInit(
-	id string, 
+	id string,
 	port string,
-	clear_local_hall_orders <-chan bool, 
-	completed_order chan<- elevio.ButtonEvent, 
-	assigned_orders chan elevio.ButtonEvent, 
+	clear_local_hall_orders <-chan bool,
+	completed_order chan<- elevio.ButtonEvent,
+	assigned_orders chan elevio.ButtonEvent,
 	elev_out chan<- elev_struct.Elevator) {
 
-	elevio.Init("localhost:" + port, config.N_FLOORS)
+	elevio.Init("localhost:"+port, config.N_FLOORS)
 
 	startFloor := elevio.GetFloor()
 	if startFloor == -1 {
