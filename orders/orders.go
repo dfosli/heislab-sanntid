@@ -2,13 +2,14 @@ package orders
 
 import (
 	elevio "Driver-go"
-	//"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	network "heislab-sanntid/network"
 	types "heislab-sanntid/types"
+	"log"
 	"sync"
 	"time"
+	//"fmt"
 )
 
 type OrderState = types.OrderState
@@ -221,6 +222,7 @@ func RunOrderManager(
 		select {
 		// Unsure if peers returns IDs. Will be tested. DB
 		case peerUpdate := <-network.Peers():
+			log.Printf("orders: peerUpdate case")
 			dataMutex.Lock()
 			for _, peer := range peerUpdate.Peers {
 				if peer != id {
@@ -252,26 +254,33 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 		case localElevator := <-localElevatorChan:
+			log.Printf("orders: localElevator case")
 			allElevators[id] = localElevator
 
 			dataMutex.Lock()
 			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(localElevator, allHallOrders, availableElevators)
 			allHallOrders[id] = AddNewLocalOrder(allHallOrders[id], localElevator.Requests)
-			
+
 			network.NetworkSend(allElevators[id], allHallOrders[id])
 			dataMutex.Unlock()
 
 		case remoteElevator := <-network.NetworkRxChan():
+			if remoteElevator.Elevator.ID == id {
+				continue
+			}
+
+			log.Printf("orders: networkRx case")
 			dataMutex.Lock()
 			allElevators[remoteElevator.Elevator.ID] = remoteElevator.Elevator
 
 			newHallOrder := UpdateLocalHallOrdersIfPossible(allHallOrders[id], fromNetworkHallOrders(remoteElevator.HallOrders)) //this function is added now as long as the HallOrders stuff is not working
 			allHallOrders[id] = newHallOrder
-			
+
 			allHallOrders, availableElevators = checkStuckAndUpdateAvailable(remoteElevator.Elevator, allHallOrders, availableElevators)
 			dataMutex.Unlock()
 
 		case newCompletedOrder := <-completedOrderChan:
+			log.Printf("orders: completedOrderChan case")
 			dataMutex.Lock()
 			if orders, ok := allHallOrders[id]; ok {
 				orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
@@ -288,6 +297,7 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 		case orderToConfirm := <-orderConfirmedChan:
+			log.Printf("orders: ConfirmedChan case")
 			dataMutex.Lock()
 
 			minOneAvailable := false
@@ -317,7 +327,7 @@ func RunOrderManager(
 				continue
 			}
 
-			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])			
+			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
 			dataMutex.Unlock()
 
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
@@ -336,6 +346,7 @@ func RunOrderManager(
 			dataMutex.RUnlock()
 
 		case orderToReset := <-orderResetChan:
+			log.Printf("orders: orderResetChan case")
 			dataMutex.Lock()
 			for id, isAvailable := range availableElevators {
 				if isAvailable {
@@ -350,12 +361,13 @@ func RunOrderManager(
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
 
 		case hallLightEvent := <-hallLightChan:
+			log.Printf("orders: hallLightChan case")
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
 
-		default:
-			dataMutex.RLock()
-			network.NetworkSend(allElevators[id], allHallOrders[id])
-			dataMutex.RUnlock()
+			// default:
+			// dataMutex.RLock()
+			// network.NetworkSend(allElevators[id], allHallOrders[id])
+			// dataMutex.RUnlock()
 		}
 	}
 }
