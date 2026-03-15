@@ -117,10 +117,7 @@ func confirmHallOrders(
 		dataMutex.RUnlock()
 
 		for _, event := range ordersToConfirm {
-			select {
-			case order_confirmed_chan <- event:
-			default:
-			}
+			order_confirmed_chan <- event
 		}
 	}
 }
@@ -175,10 +172,7 @@ func resetHallOrders(
 		dataMutex.RUnlock()
 
 		for _, event := range ordersToReset {
-			select {
-			case order_reset_chan <- event:
-			default:
-			}
+			order_reset_chan <- event
 		}
 	}
 }
@@ -246,6 +240,7 @@ func applyRemoteElevatorUpdate(
 	availableElevators map[string]bool) {
 
 	allElevators[remoteElevator.ID] = remoteElevator
+	allHallOrders[remoteElevator.ID] = fromNetworkHallOrders(remoteHallOrders) //! midlertidig funksjon?
 	allHallOrders[localID] = UpdateLocalHallOrdersIfPossible(allHallOrders[localID], fromNetworkHallOrders(remoteHallOrders))
 	applyAvailabilityTransition(remoteElevator, allHallOrders, availableElevators)
 }
@@ -315,7 +310,6 @@ func RunOrderManager(
 				continue
 			}
 
-			log.Printf("orders: networkRx case")
 			dataMutex.Lock()
 			applyRemoteElevatorUpdate(id, remoteElevator.Elevator, remoteElevator.HallOrders, allHallOrders, allElevators, availableElevators)
 			dataMutex.Unlock()
