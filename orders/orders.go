@@ -65,34 +65,35 @@ func hasCabOrders(cabOrders [config.N_FLOORS]bool) bool {
 func mergeCabOrders(allCabOrders types.CabOrders, remoteCabOrders types.CabOrders, remoteID string, remoteRecovering bool) {
 	for id, cabOrders := range remoteCabOrders {
 		if remoteRecovering && id == remoteID && !hasCabOrders(cabOrders) {
-			continue //!This can theoreticallycause caborder loss if a recovering elevator receives a caborder Very quickly, before it receives its caborders from other elevators.
+			continue //!This can theoretically cause caborder loss if a recovering elevator receives a caborder Very quickly, before it receives its caborders from other elevators.
 		}
 		allCabOrders[id] = cabOrders
 	}
 }
 
-func recoverLocalCabOrders(localID string, allCabOrders types.CabOrders, allElevators types.AllElevators) []elevio.ButtonEvent {
+func recoverLocalCabOrders(localID string, allCabOrders types.CabOrders, allElevators types.AllElevators) [config.N_FLOORS]bool {
+	var recoveredOrders [config.N_FLOORS]bool
+
 	localCabOrders, ok := allCabOrders[localID]
 	if !ok {
-		return nil
+		return recoveredOrders
 	}
 
 	localElevator, ok := allElevators[localID]
 	if !ok {
-		return nil
+		return recoveredOrders
 	}
 
-	var recoveredOrders []elevio.ButtonEvent
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		if !localCabOrders[floor] || localElevator.Requests[floor][elevio.BT_Cab] {
 			continue
 		}
 
-		localElevator.Requests[floor][elevio.BT_Cab] = true
-		recoveredOrders = append(recoveredOrders, elevio.ButtonEvent{Floor: floor, Button: elevio.BT_Cab})
+		// localElevator.Requests[floor][elevio.BT_Cab] = true
+		recoveredOrders[floor] = true
 	}
 
-	allElevators[localID] = localElevator
+	// allElevators[localID] = localElevator
 	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
 
 	return recoveredOrders
@@ -289,6 +290,7 @@ func RunOrderManager(
 	localElevatorChan <-chan types.Elevator,
 	completedOrderChan <-chan elevio.ButtonEvent,
 	reassignedHallOrdersChan chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+	recoveredCabOrdersChan chan<- [config.N_FLOORS]bool,
 	hallLightChan chan elev_struct.LightEvent,
 	orderConfirmedChan <-chan elevio.ButtonEvent,
 	orderResetChan <-chan elevio.ButtonEvent,
@@ -304,7 +306,6 @@ func RunOrderManager(
 
 	for {
 		select {
-		// Unsure if peers returns IDs. Will be tested. DB
 		case peerUpdate := <-network.Peers():
 			log.Printf("peer update case, peers: %v", peerUpdate.Peers)
 			dataMutex.Lock()
@@ -321,10 +322,6 @@ func RunOrderManager(
 					// men da vil det kanskje reassignes hver gang det kommer en peer update...
 				}
 			}
-
-			// Needed? DB
-			// Could leed to fatal problems. DB
-			// availableElevators[peerUpdate.New] = true //! New starter som [] og det blir da lagt til en ny heis med tom id. Har derfor kommentert ut
 
 			for _, lostPeer := range peerUpdate.Lost {
 				if lostPeer == id {
@@ -354,15 +351,14 @@ func RunOrderManager(
 
 			dataMutex.Lock()
 			applyRemoteElevatorUpdate(id, remoteElevator.Elevator, remoteElevator.HallOrders, remoteElevator.CabOrders, remoteElevator.Recovering, allHallOrders, allElevators, allCabOrders, availableElevators)
-			var recoveredCabOrders []elevio.ButtonEvent
+
+			var recoveredCabOrders [config.N_FLOORS]bool
 			if time.Now().Before(cabOrderRecoveryDeadline) {
 				recoveredCabOrders = recoverLocalCabOrders(id, allCabOrders, allElevators)
 			}
 			dataMutex.Unlock()
 
-			for _, recoveredOrder := range recoveredCabOrders {
-				assignOrderChan <- recoveredOrder
-			}
+			recoveredCabOrdersChan <- recoveredCabOrders
 
 		case newCompletedOrder := <-completedOrderChan:
 			if newCompletedOrder.Button == elevio.BT_Cab {
@@ -371,21 +367,27 @@ func RunOrderManager(
 
 			log.Printf("completedOrderChan case")
 
+			shouldSend := false
+			var elevatorSnapshot elev_struct.Elevator
+			var hallOrdersSnapshot HallOrders
+			var allCabOrdersSnapshot types.CabOrders
 
 			dataMutex.Lock()
 			if orders, ok := allHallOrders[id]; ok {
 				orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
 				allHallOrders[id] = orders
 
-				// type NetworkMsg struct {
-				// 	ID            string
-				// 	HallOrders    types.HallOrders
-				// 	ElevatorState types.ElevatorState
-				// }
-			    allCabOrdersSnapshot := cloneCabOrders(allCabOrders)
-				network.NetworkSend(allElevators[id], allHallOrders[id], allCabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
+				elevatorSnapshot = allElevators[id]
+				hallOrdersSnapshot = allHallOrders[id]
+				allCabOrdersSnapshot = cloneCabOrders(allCabOrders)
+				shouldSend = true
 			}
+
 			dataMutex.Unlock()
+
+			if shouldSend {
+				network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, allCabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
+			}
 
 		case orderToConfirm := <-orderConfirmedChan:
 			log.Printf("ConfirmedChan case, floor: %d, button: %d", orderToConfirm.Floor, orderToConfirm.Button)
@@ -422,7 +424,7 @@ func RunOrderManager(
 
 			elevatorSnapshot := allElevators[id]
 			hallOrdersSnapshot := allHallOrders[id]
-      allCabOrdersSnapshot := cloneCabOrders(allCabOrders)
+			allCabOrdersSnapshot := cloneCabOrders(allCabOrders)
 			dataMutex.Unlock()
 
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
@@ -430,7 +432,6 @@ func RunOrderManager(
 			reassignedHallOrdersChan <- hallOrdersForId
 
 			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, allCabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
-
 
 		case orderToReset := <-orderResetChan:
 			log.Printf("ResetChan case, floor: %d, button: %d", orderToReset.Floor, orderToReset.Button)
@@ -466,6 +467,7 @@ func RunOrderManager(
 
 func OrdersInit(id string,
 	reassignLocalHallOrdersChan chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+	recoveredCabOrdersChan chan<- [config.N_FLOORS]bool,
 	completedOrderChan <-chan elevio.ButtonEvent,
 	localElevatorChan <-chan types.Elevator) {
 
@@ -488,6 +490,7 @@ func OrdersInit(id string,
 		localElevatorChan,
 		completedOrderChan,
 		reassignLocalHallOrdersChan,
+		recoveredCabOrdersChan,
 		hallLightChan,
 		orderConfirmedChan,
 		orderResetChan,

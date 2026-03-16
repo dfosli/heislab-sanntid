@@ -22,6 +22,7 @@ func RunElevator(
 	drvFloorsChan <-chan int,
 	drvObstrChan <-chan bool,
 	reassignedHallOrdersChan <-chan [N_FLOORS][N_BUTTONS - 1]bool,
+	recoveredCabOrdersChan <-chan [N_FLOORS]bool,
 	completedOrderChan chan<- elevio.ButtonEvent,
 	elevOutChan chan<- elev_struct.Elevator) {
 
@@ -56,6 +57,21 @@ func RunElevator(
 					}
 				}
 			}
+
+		case recoveredCabOrders := <-recoveredCabOrdersChan:
+			for floor := 0; floor < N_FLOORS; floor++ {
+				if recoveredCabOrders[floor] && !elevator.Requests[floor][elevio.BT_Cab] {
+					elevator = state_machine.OnRequestButtonPress(
+						elevator,
+						floor,
+						elevio.BT_Cab,
+						doorTimer,
+						stuckTimer,
+						completedOrderChan,
+					)
+				}
+			}
+			elevOutChan <- elevator
 
 		case btnEvent := <-drvButtonsChan:
 			if btnEvent.Button == elevio.BT_Cab {
@@ -117,6 +133,7 @@ func ElevatorInit(
 	id string,
 	port string,
 	reassignedOrders <-chan [N_FLOORS][N_BUTTONS - 1]bool,
+	recoveredCabOrders <-chan [N_FLOORS]bool,
 	completedOrder chan<- elevio.ButtonEvent,
 	elevOut chan<- elev_struct.Elevator) {
 
@@ -142,5 +159,5 @@ func ElevatorInit(
 	go elevio.PollFloorSensor(drvFloors)
 	go elevio.PollObstructionSwitch(drvObstr)
 
-	go RunElevator(id, drvButtons, drvFloors, drvObstr, reassignedOrders, completedOrder, elevOut)
+	go RunElevator(id, drvButtons, drvFloors, drvObstr, reassignedOrders, recoveredCabOrders, completedOrder, elevOut)
 }
