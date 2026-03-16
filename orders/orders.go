@@ -245,7 +245,7 @@ func RunOrderManager(
 	for {
 		select {
 		case peerUpdate := <-network.Peers():
-			fmt.Printf("peer update case, peers: %v", peerUpdate.Peers)
+			fmt.Printf("peer update case, peers: %v\n", peerUpdate.Peers)
 			dataMutex.Lock()
 			for _, peer := range peerUpdate.Peers {
 				if peer != id {
@@ -315,7 +315,7 @@ func RunOrderManager(
 				continue
 			}
 
-			fmt.Println("completedOrderChan case")
+			fmt.Printf("completedOrderChan case: floor: %d, button: %d\n", newCompletedOrder.Floor, newCompletedOrder.Button)
 
 			shouldSend := false
 			var elevatorSnapshot elev_struct.Elevator
@@ -340,7 +340,7 @@ func RunOrderManager(
 			}
 
 		case orderToConfirm := <-orderConfirmedChan:
-			fmt.Printf("ConfirmedChan case, floor: %d, button: %d", orderToConfirm.Floor, orderToConfirm.Button)
+			fmt.Printf("ConfirmedChan case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
 			dataMutex.Lock()
 
 			minOneAvailable := false
@@ -384,7 +384,7 @@ func RunOrderManager(
 			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, cabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
 
 		case orderToReset := <-orderResetChan:
-			fmt.Printf("ResetChan case, floor: %d, button: %d", orderToReset.Floor, orderToReset.Button)
+			fmt.Printf("ResetChan case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
 			dataMutex.Lock()
 			for elevId, isAvailable := range availableElevators {
 				if isAvailable {
@@ -399,7 +399,7 @@ func RunOrderManager(
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
 
 		case hallLightEvent := <-hallLightChan:
-			fmt.Printf("hallLightChan case, floor: %d, button: %d, on: %v", hallLightEvent.Floor, hallLightEvent.Button, hallLightEvent.On)
+			fmt.Printf("hallLightChan case, floor: %d, button: %d, on: %v\n", hallLightEvent.Floor, hallLightEvent.Button, hallLightEvent.On)
 			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
 
 		case <-networkResendTicker.C:
