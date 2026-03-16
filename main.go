@@ -33,11 +33,12 @@ func main() {
 
 	elevOutChan := make(chan elev_struct.Elevator, config.BUFFER_SIZE)
 	reassignedOrdersChan := make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, config.BUFFER_SIZE)
+	recoveredCabOrdersChan := make(chan [config.N_FLOORS]bool, config.BUFFER_SIZE)
 	completedOrderChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 
 	network.NetworkInit(id)
-	elevator.ElevatorInit(id, port, reassignedOrdersChan, completedOrderChan, elevOutChan)
-	orders.OrdersInit(id, reassignedOrdersChan, completedOrderChan, elevOutChan)
+	elevator.ElevatorInit(id, port, reassignedOrdersChan, recoveredCabOrdersChan, completedOrderChan, elevOutChan)
+	orders.OrdersInit(id, reassignedOrdersChan, recoveredCabOrdersChan, completedOrderChan, elevOutChan)
 
 	for {
 		time.Sleep(100 * time.Millisecond)

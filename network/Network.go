@@ -57,7 +57,7 @@ func SetPeerTxEnable(enable bool) {
 	peerTxEnable <- enable
 }
 
-// func HasVisiblePeers() bool { //! denne funksjonen leser rett fra kanalen, og "stjeler" oppdateringer fra hovedløkken i orders.go. Det er kanskje
+// func HasVisiblePeers() bool { //! denne funksjonen leser rett fra kanalen, og "stjeler" oppdateringer fra hovedløkken i orders.go. 
 // 	select {
 // 	case peers := <-peerUpdateCh:
 // 		if len(peers.Peers) > 0 {
