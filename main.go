@@ -31,19 +31,14 @@ func main() {
 		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
 	}
 
-	elevOutChan := make(chan elev_struct.Elevator, config.BUFFER_SIZE)
-	clearLocalHallOrdersChan := make(chan bool, config.BUFFER_SIZE)
-	completedOrderChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	assignedOrdersChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	elev_out_chan := make(chan elev_struct.Elevator, config.BUFFER_SIZE)
+	clear_local_hall_orders_chan := make(chan bool, config.BUFFER_SIZE)
+	completed_order_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	assigned_orders_chan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 
-	error := network.NetworkInit(id)
-	if error != nil {
-		fmt.Println(error)
-		return
-	}
-
-	elevator.ElevatorInit(id, port, clearLocalHallOrdersChan, completedOrderChan, assignedOrdersChan, elevOutChan)
-	orders.OrdersInit(id, clearLocalHallOrdersChan, completedOrderChan, assignedOrdersChan, elevOutChan)
+	network.NetworkInit(id)
+	elevator.ElevatorInit(id, port, clear_local_hall_orders_chan, completed_order_chan, assigned_orders_chan, elev_out_chan)
+	orders.OrdersInit(id, clear_local_hall_orders_chan, completed_order_chan, assigned_orders_chan, elev_out_chan)
 
 	for {
 		time.Sleep(100 * time.Millisecond)
