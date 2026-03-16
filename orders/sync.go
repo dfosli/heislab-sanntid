@@ -1,7 +1,6 @@
 package orders
 
 import (
-	elevio "Driver-go"
 	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
@@ -20,7 +19,7 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] == COMPLETED && remoteHallOrders[floor][btn] == NONE {
 				localHallOrders[floor][btn] = NONE
-				hallLightChan <- elev_struct.LightEvent{Floor: floor, Button: elevio.ButtonType(btn), On: false}
+				//hallLightChan <- elev_struct.LightEvent{Floor: floor, Button: elevio.ButtonType(btn), On: false}
 			}
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
 				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {

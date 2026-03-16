@@ -38,13 +38,13 @@ func main() {
 
 	printScenario(id, hallOrders, availableElevators, allElevatorStates)
 
-	reassigned, err := orders.ReassignOrders(id, hallOrders, availableElevators, allElevatorStates)
-	if err != nil {
-		fmt.Printf("ReassignOrders failed: %v\n", err)
-		return
-	}
+	//reassigned, err := orders.ReassignOrders(id, hallOrders, availableElevators, allElevatorStates)
+	// if err != nil {
+	// 	fmt.Printf("ReassignOrders failed: %v\n", err)
+	// 	return
+	// }
 
-	fmt.Printf("\nReturned hall assignments for id=%q:\n%s\n", id, formatBoolMatrix(reassigned))
+	//fmt.Printf("\nReturned hall assignments for id=%q:\n%s\n", id, formatBoolMatrix(reassigned))
 }
 
 func makeElevator(id string, floor int, state elev_struct.State) elev_struct.Elevator {
