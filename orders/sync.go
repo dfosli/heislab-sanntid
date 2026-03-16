@@ -20,11 +20,13 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] == COMPLETED && remoteHallOrders[floor][btn] == NONE {
 				localHallOrders[floor][btn] = NONE
+				//hallLightChan <- elev_struct.LightEvent{Floor: floor, Button: elevio.ButtonType(btn), On: false}
 			}
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
 				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {
 					continue
 				} //this if will always update to higher order states, unless it is an update from NONE to COMPLETED
+				//! should we trigger distribution if jump past barrier?
 				(localHallOrders)[floor][btn] = remoteHallOrders[floor][btn]
 			}
 		}
