@@ -267,13 +267,14 @@ func applyRemoteElevatorUpdate(
 	remoteElevatorMsg network.NetworkMsg,
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
-	allCabOrders types.CabOrders) {
+	allCabOrders types.CabOrders,
+	hallLightChan chan<- elev_struct.LightEvent) {
 
 	allElevators[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.Elevator
 	allHallOrders[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.HallOrders
 
 	mergeCabOrders(allCabOrders, remoteElevatorMsg.CabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.Recovering)
-	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
+	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders, hallLightChan)
 }
 
 func RunOrderManager(
@@ -355,7 +356,7 @@ func RunOrderManager(
 			}
 
 			dataMutex.Lock()
-			applyRemoteElevatorUpdate(id, remoteElevatorMsg, allHallOrders, allElevators, allCabOrders)
+			applyRemoteElevatorUpdate(id, remoteElevatorMsg, allHallOrders, allElevators, allCabOrders, hallLightChan)
 
 			if time.Now().Before(cabOrderRecoveryDeadline) {
 				recoveredCabOrders := recoverLocalCabOrders(id, allCabOrders, allElevators)
