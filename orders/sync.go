@@ -1,6 +1,7 @@
 package orders
 
 import (
+	elevio "Driver-go"
 	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
@@ -14,16 +15,18 @@ import (
 // }
 // Nuked this func since it is useless. DB.
 
-func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
+func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders, hallLightChan chan elev_struct.LightEvent,) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] == COMPLETED && remoteHallOrders[floor][btn] == NONE {
 				localHallOrders[floor][btn] = NONE
+				hallLightChan <- elev_struct.LightEvent{Floor: floor, Button: elevio.ButtonType(btn), On: false}
 			}
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
 				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {
 					continue
 				} //this if will always update to higher order states, unless it is an update from NONE to COMPLETED
+				//! should we trigger distribution if jump past barrier?
 				(localHallOrders)[floor][btn] = remoteHallOrders[floor][btn]
 			}
 		}

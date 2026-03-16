@@ -274,13 +274,15 @@ func applyRemoteElevatorUpdate(
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
 	allCabOrders types.CabOrders,
-	availableElevators map[string]bool) {
+	availableElevators map[string]bool,
+	hallLightChan chan elev_struct.LightEvent,
+	) {
 
 	allElevators[remoteElevator.ID] = remoteElevator
 	allHallOrders[remoteElevator.ID] = remoteHallOrders
 
 	mergeCabOrders(allCabOrders, remoteCabOrders, remoteElevator.ID, remoteRecovering)
-	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteHallOrders)
+	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteHallOrders, hallLightChan)
 
 	applyAvailabilityTransition(remoteElevator, allHallOrders, availableElevators)
 }
@@ -350,7 +352,7 @@ func RunOrderManager(
 			}
 
 			dataMutex.Lock()
-			applyRemoteElevatorUpdate(id, remoteElevator.Elevator, remoteElevator.HallOrders, remoteElevator.CabOrders, remoteElevator.Recovering, allHallOrders, allElevators, allCabOrders, availableElevators)
+			applyRemoteElevatorUpdate(id, remoteElevator.Elevator, remoteElevator.HallOrders, remoteElevator.CabOrders, remoteElevator.Recovering, allHallOrders, allElevators, allCabOrders, availableElevators, hallLightChan)
 
 			var recoveredCabOrders [config.N_FLOORS]bool
 			if time.Now().Before(cabOrderRecoveryDeadline) {
