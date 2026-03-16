@@ -7,7 +7,6 @@ import (
 	"heislab-sanntid/elevator/elev_struct"
 	network "heislab-sanntid/network"
 	types "heislab-sanntid/types"
-	"log"
 	"maps"
 	"sync"
 	"time"
@@ -260,7 +259,7 @@ func RunOrderManager(
 						for id, isAvailable := range availableElevators {
 							if isAvailable {
 								if orders, ok := allHallOrders[id]; ok {
-									orders = reopenDistributedHallOrders(orders)
+									orders = rollbackHallOrders(orders)
 									allHallOrders[id] = orders
 								}
 							}
@@ -295,7 +294,7 @@ func RunOrderManager(
 				network.SetPeerTxEnable(isAvailable)
 			}
 
-			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, allCabOrdersSnapshot, recoveringCabOrders)
+			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, cabOrdersSnapshot, recoveringCabOrders)
 
 		case remoteElevatorMsg := <-network.NetworkRxChan():
 			if remoteElevatorMsg.Elevator.ID == id {
