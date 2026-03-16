@@ -219,7 +219,7 @@ func applyRemoteElevatorUpdate(
 	allElevators[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.Elevator
 	allHallOrders[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.HallOrders
 
-	mergeCabOrders(allCabOrders, remoteElevatorMsg.CabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.Recovering)
+	mergeCabOrders(allCabOrders, remoteElevatorMsg.CabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.CabOrdersRecovering)
 	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
 }
 
