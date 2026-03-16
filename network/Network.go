@@ -11,6 +11,8 @@ import (
 type NetworkMsg struct {
 	Elevator   types.Elevator
 	HallOrders types.HallOrders
+	CabOrders  types.CabOrders
+	Recovering bool
 }
 
 var (
@@ -37,8 +39,9 @@ func NetworkInit(id string) error {
 	}
 	return nil
 }
-func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders) {
-	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders}
+
+func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders, cabOrders types.CabOrders, recovering bool) {
+	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders, CabOrders: cabOrders, Recovering: recovering}
 	networkTx <- msg
 }
 
