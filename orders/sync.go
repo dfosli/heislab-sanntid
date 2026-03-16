@@ -1,6 +1,7 @@
 package orders
 
 import (
+	elevio "Driver-go"
 	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
@@ -74,4 +75,50 @@ func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[str
 	}
 
 	return hallOrderForID, nil
+}
+
+func hasCabOrders(cabOrders [config.N_FLOORS]bool) bool {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		if cabOrders[floor] {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeCabOrders(allCabOrders types.CabOrders, remoteCabOrders types.CabOrders, remoteID string, remoteRecovering bool) {
+	for id, cabOrders := range remoteCabOrders {
+		if remoteRecovering && id == remoteID && !hasCabOrders(cabOrders) {
+			continue //!This can theoretically cause caborder loss if a recovering elevator receives a caborder Very quickly, before it receives its caborders from other elevators.
+		}
+		allCabOrders[id] = cabOrders
+	}
+}
+
+func recoverLocalCabOrders(localID string, allCabOrders types.CabOrders, allElevators types.AllElevators) [config.N_FLOORS]bool {
+	var recoveredOrders [config.N_FLOORS]bool
+
+	localCabOrders, ok := allCabOrders[localID]
+	if !ok {
+		return recoveredOrders
+	}
+
+	localElevator, ok := allElevators[localID]
+	if !ok {
+		return recoveredOrders
+	}
+
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		if !localCabOrders[floor] || localElevator.Requests[floor][elevio.BT_Cab] {
+			continue
+		}
+
+		// localElevator.Requests[floor][elevio.BT_Cab] = true
+		recoveredOrders[floor] = true
+	}
+
+	// allElevators[localID] = localElevator
+	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
+
+	return recoveredOrders
 }
