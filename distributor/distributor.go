@@ -119,24 +119,30 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 	if err != nil {
 		return nil, fmt.Errorf("marshal error: %w", err)
 	}
-	
+
 	return data, nil
 }
 
 func ParseDistributorOutput(output []byte) (map[string][][]bool, error) {
 	var assignments map[string][][]bool
 	if err := json.Unmarshal(output, &assignments); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal distributor output: %w", err)
+	}
+	if assignments == nil {
+		return nil, fmt.Errorf("distributor output was empty")
 	}
 	return assignments, nil
 }
 
-func HallOrdersForID(output []byte, id string) ([][]bool, bool, error) {
+func HallOrdersForID(output []byte, id string) ([][]bool, error) {
 	assignments, err := ParseDistributorOutput(output)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	hallOrders, ok := assignments[id]
 
-	return hallOrders, ok, nil
+	hallOrders, exists := assignments[id]
+	if !exists {
+		return nil, fmt.Errorf("missing assignments for id %s", id)
+	}
+	return hallOrders, nil
 }

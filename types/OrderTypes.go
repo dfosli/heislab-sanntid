@@ -15,4 +15,4 @@ const (
 	COMPLETED
 )
 
-type HallOrdersAllElevators [config.N_ELEVATORS]HallOrders
+type HallOrdersAllElevators map[string]HallOrders
