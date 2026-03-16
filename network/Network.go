@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/network/network/bcast"
 	"heislab-sanntid/network/network/peers"
@@ -9,10 +8,10 @@ import (
 )
 
 type NetworkMsg struct {
-	Elevator   types.Elevator
-	HallOrders types.HallOrders
-	CabOrders  types.CabOrders
-	Recovering bool
+	Elevator            types.Elevator
+	HallOrders          types.HallOrders
+	CabOrders           types.CabOrders
+	CabOrdersRecovering bool
 }
 
 var (
@@ -22,7 +21,7 @@ var (
 	peerTxEnable chan bool
 )
 
-func NetworkInit(id string) error {
+func NetworkInit(id string) {
 
 	peerUpdateCh = make(chan peers.PeerUpdate, config.BUFFER_SIZE)
 	peerTxEnable = make(chan bool)
@@ -33,15 +32,10 @@ func NetworkInit(id string) error {
 	networkRx = make(chan NetworkMsg, config.BUFFER_SIZE)
 	go bcast.Transmitter(16569, networkTx)
 	go bcast.Receiver(16569, networkRx)
-
-	if len(peerUpdateCh) < 2 {
-		return fmt.Errorf("Failed to init network: No peers found")
-	}
-	return nil
 }
 
 func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders, cabOrders types.CabOrders, recovering bool) {
-	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders, CabOrders: cabOrders, Recovering: recovering}
+	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders, CabOrders: cabOrders, CabOrdersRecovering: recovering}
 	networkTx <- msg
 }
 
@@ -57,7 +51,7 @@ func SetPeerTxEnable(enable bool) {
 	peerTxEnable <- enable
 }
 
-// func HasVisiblePeers() bool { //! denne funksjonen leser rett fra kanalen, og "stjeler" oppdateringer fra hovedløkken i orders.go. 
+// func HasVisiblePeers() bool { //! denne funksjonen leser rett fra kanalen, og "stjeler" oppdateringer fra hovedløkken i orders.go.
 // 	select {
 // 	case peers := <-peerUpdateCh:
 // 		if len(peers.Peers) > 0 {
