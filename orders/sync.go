@@ -70,9 +70,6 @@ func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[str
 	if err != nil {
 		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("parse distributor output: %w", err)
 	}
-	if !ok {
-		return nil, fmt.Errorf("missing assignments for id %s", id)
-	}
 
 	return hallOrderForID, nil
 }

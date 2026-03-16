@@ -136,15 +136,15 @@ func ParseDistributorOutput(output []byte) (map[string][config.N_FLOORS][config.
 	return assignments, nil
 }
 
-func HallOrdersForID(output []byte, id string) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, bool, error) {
+func HallOrdersForID(output []byte, id string) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
 	assignments, err := ParseDistributorOutput(output)
 	if err != nil {
-		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, false, err
+		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, err
 	}
 
 	hallOrders, exists := assignments[id]
 	if !exists {
-		return nil, fmt.Errorf("missing assignments for id %s", id)
+		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("missing assignments for id %s", id)
 	}
 	return hallOrders, nil
 }
