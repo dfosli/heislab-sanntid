@@ -121,13 +121,17 @@ func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS -
 		return nil, fmt.Errorf("marshal error: %w", err)
 	}
 
+
 	return data, nil
 }
 
 func ParseDistributorOutput(output []byte) (map[string][config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
 	var assignments map[string][config.N_FLOORS][config.N_BUTTONS - 1]bool
 	if err := json.Unmarshal(output, &assignments); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal distributor output: %w", err)
+	}
+	if assignments == nil {
+		return nil, fmt.Errorf("distributor output was empty")
 	}
 	return assignments, nil
 }
@@ -137,7 +141,10 @@ func HallOrdersForID(output []byte, id string) ([config.N_FLOORS][config.N_BUTTO
 	if err != nil {
 		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, false, err
 	}
-	hallOrders, ok := assignments[id]
 
-	return hallOrders, ok, nil
+	hallOrders, exists := assignments[id]
+	if !exists {
+		return nil, fmt.Errorf("missing assignments for id %s", id)
+	}
+	return hallOrders, nil
 }
