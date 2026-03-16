@@ -23,7 +23,7 @@ const (
 	COMPLETED = types.COMPLETED
 )
 
-type HallOrdersAllElevators map[string]HallOrders
+type HallOrdersAllElevators = types.HallOrdersAllElevators
 
 func initHallOrders() HallOrders {
 	var hallOrders HallOrders
@@ -46,26 +46,6 @@ func initAllElevators(id string) types.AllElevators {
 	allElevators[id] = elev_struct.ElevatorInit(id)
 	return allElevators
 }
-
-// func toNetworkHallOrders(hallOrders HallOrders) types.HallOrders {
-// 	var networkHallOrders types.HallOrders
-// 	for floor := 0; floor < config.N_FLOORS; floor++ {
-// 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-// 			networkHallOrders[floor][btn] = types.OrderState(hallOrders[floor][btn])
-// 		}
-// 	}
-// 	return networkHallOrders
-// }
-
-// func fromNetworkHallOrders(networkHallOrders types.HallOrders) HallOrders {
-// 	var hallOrders HallOrders
-// 	for floor := 0; floor < config.N_FLOORS; floor++ {
-// 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-// 			hallOrders[floor][btn] = OrderState(networkHallOrders[floor][btn])
-// 		}
-// 	}
-// 	return hallOrders
-// }
 
 func confirmHallOrders(
 	localID string,
@@ -233,7 +213,7 @@ func applyRemoteElevatorUpdate(
 
 	allElevators[remoteElevator.ID] = remoteElevator
 	allHallOrders[remoteElevator.ID] = remoteHallOrders
-	allHallOrders[localID] = UpdateLocalHallOrdersIfPossible(allHallOrders[localID], remoteHallOrders)
+	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteHallOrders)
 	applyAvailabilityTransition(remoteElevator, allHallOrders, availableElevators)
 }
 

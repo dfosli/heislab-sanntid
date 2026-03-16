@@ -8,22 +8,23 @@ import (
 	types "heislab-sanntid/types"
 )
 
-func updateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderState OrderState) bool {
-	(*hallOrders)[floor][btn] = orderState
-	return true //!TODO add some errorhandling here
-}
+// func updateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderState OrderState) bool {
+// 	(*hallOrders)[floor][btn] = orderState
+// 	return true //!TODO add some errorhandling here
+// }
+// Nuked this func since it is useless. DB.
 
-func UpdateLocalHallOrdersIfPossible(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
+func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] == COMPLETED && remoteHallOrders[floor][btn] == NONE {
-				updateLocalHallOrders(&localHallOrders, floor, btn, NONE)
+				localHallOrders[floor][btn] = NONE
 			}
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
 				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {
 					continue
 				} //this if will always update to higher order states, unless it is an update from NONE to COMPLETED
-				updateLocalHallOrders(&localHallOrders, floor, btn, remoteHallOrders[floor][btn])
+				(localHallOrders)[floor][btn] = remoteHallOrders[floor][btn]
 			}
 		}
 	}
@@ -60,18 +61,15 @@ func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[str
 	if err != nil {
 		return nil, fmt.Errorf("format input for distributor: %w", err)
 	}
-	
+
 	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
 	if err != nil {
 		return nil, fmt.Errorf("call distributor: %w", err)
 	}
 
-	hallOrderForID, ok, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
+	hallOrderForID, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
 	if err != nil {
 		return nil, fmt.Errorf("parse distributor output: %w", err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("missing assignments for id %s", id)
 	}
 
 	return hallOrderForID, nil
