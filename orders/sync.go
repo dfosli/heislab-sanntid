@@ -14,7 +14,7 @@ import (
 // }
 // Nuked this func since it is useless. DB.
 
-func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders, hallLightChan chan elev_struct.LightEvent,) HallOrders {
+func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] == COMPLETED && remoteHallOrders[floor][btn] == NONE {
