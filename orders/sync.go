@@ -58,6 +58,7 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [config.N_FLOORS][config.N_BU
 
 func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevators types.AllElevators) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
+	fmt.Println(hallRequests)
 	formattedOrders, err := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevators)
 	if err != nil {
 		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("format input for distributor: %w", err)
