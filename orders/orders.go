@@ -355,7 +355,7 @@ func RunOrderManager(
 			}
 
 			dataMutex.Lock()
-			applyRemoteElevatorUpdate(id, remoteElevator.Elevator, remoteElevator.HallOrders, remoteElevator.CabOrders, remoteElevator.Recovering, allHallOrders, allElevators, allCabOrders, availableElevators)
+			applyRemoteElevatorUpdate(id, remoteElevatorMsg, allHallOrders, allElevators, allCabOrders)
 
 			if time.Now().Before(cabOrderRecoveryDeadline) {
 				recoveredCabOrders := recoverLocalCabOrders(id, allCabOrders, allElevators)
