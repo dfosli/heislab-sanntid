@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/network/network/bcast"
 	"heislab-sanntid/network/network/peers"
@@ -34,9 +33,9 @@ func NetworkInit(id string) error {
 	go bcast.Transmitter(16569, networkTx)
 	go bcast.Receiver(16569, networkRx)
 
-	if len(peerUpdateCh) < 2 {
-		return fmt.Errorf("Failed to init network: No peers found")
-	}
+	// if len(peerUpdateCh) < 2 {
+	// 	return fmt.Errorf("Failed to init network: No peers found")
+	// }
 	return nil
 }
 
