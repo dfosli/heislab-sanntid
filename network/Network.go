@@ -1,15 +1,17 @@
 package network
 
 import (
+	"heislab-sanntid/config"
 	"heislab-sanntid/network/network/bcast"
 	"heislab-sanntid/network/network/peers"
 	"heislab-sanntid/types"
-	"heislab-sanntid/config"
 )
 
 type NetworkMsg struct {
 	Elevator   types.Elevator
 	HallOrders types.HallOrders
+	CabOrders  types.CabOrders
+	Recovering bool
 }
 
 var (
@@ -38,8 +40,9 @@ func NetworkInit(id string) {
 	go bcast.Transmitter(16569, networkTx)
 	go bcast.Receiver(16569, networkRx)
 }
-func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders) {
-	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders}
+
+func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders, cabOrders types.CabOrders, recovering bool) {
+	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders, CabOrders: cabOrders, Recovering: recovering}
 	networkTx <- msg
 }
 

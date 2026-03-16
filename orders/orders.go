@@ -47,6 +47,66 @@ func initAllElevators(id string) types.AllElevators {
 	return allElevators
 }
 
+func initCabOrdersAllElevators(id string) types.CabOrders {
+	allCabOrders := make(types.CabOrders)
+	allCabOrders[id] = elev_struct.GetCabOrders(elev_struct.ElevatorInit(id))
+	return allCabOrders
+}
+
+func hasCabOrders(cabOrders [config.N_FLOORS]bool) bool {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		if cabOrders[floor] {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeCabOrders(allCabOrders types.CabOrders, remoteCabOrders types.CabOrders, remoteID string, remoteRecovering bool) {
+	for id, cabOrders := range remoteCabOrders {
+		if remoteRecovering && id == remoteID && !hasCabOrders(cabOrders) {
+			continue //!This can theoreticallycause caborder loss if a recovering elevator receives a caborder Very quickly, before it receives its caborders from other elevators.
+		}
+		allCabOrders[id] = cabOrders
+	}
+}
+
+func recoverLocalCabOrders(localID string, allCabOrders types.CabOrders, allElevators types.AllElevators) []elevio.ButtonEvent {
+	localCabOrders, ok := allCabOrders[localID]
+	if !ok {
+		return nil
+	}
+
+	localElevator, ok := allElevators[localID]
+	if !ok {
+		return nil
+	}
+
+	var recoveredOrders []elevio.ButtonEvent
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		if !localCabOrders[floor] || localElevator.Requests[floor][elevio.BT_Cab] {
+			continue
+		}
+
+		localElevator.Requests[floor][elevio.BT_Cab] = true
+		recoveredOrders = append(recoveredOrders, elevio.ButtonEvent{Floor: floor, Button: elevio.BT_Cab})
+	}
+
+	allElevators[localID] = localElevator
+	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
+
+	return recoveredOrders
+}
+
+func cloneCabOrders(cabOrders types.CabOrders) types.CabOrders {
+	clonedCabOrders := make(types.CabOrders, len(cabOrders))
+	for id, localCabOrders := range cabOrders {
+		clonedCabOrders[id] = localCabOrders
+	}
+	return clonedCabOrders
+}
+
+
 func toNetworkHallOrders(hallOrders HallOrders) types.HallOrders {
 	var networkHallOrders types.HallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
@@ -214,9 +274,11 @@ func applyLocalElevatorUpdate(
 	localElevator elev_struct.Elevator,
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
+	allCabOrders types.CabOrders,
 	availableElevators map[string]bool) (types.Elevator, HallOrders) {
 
 	allElevators[localID] = localElevator
+	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
 	applyAvailabilityTransition(localElevator, allHallOrders, availableElevators)
 	allHallOrders[localID] = AddNewLocalOrder(allHallOrders[localID], localElevator.Requests)
 
@@ -227,12 +289,16 @@ func applyRemoteElevatorUpdate(
 	localID string,
 	remoteElevator elev_struct.Elevator,
 	remoteHallOrders types.HallOrders,
+	remoteCabOrders types.CabOrders,
+	remoteRecovering bool,
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
+	allCabOrders types.CabOrders,
 	availableElevators map[string]bool) {
 
 	allElevators[remoteElevator.ID] = remoteElevator
-	allHallOrders[remoteElevator.ID] = fromNetworkHallOrders(remoteHallOrders) //! midlertidig funksjon?
+	allHallOrders[remoteElevator.ID] = remoteHallOrders
+	mergeCabOrders(allCabOrders, remoteCabOrders, remoteElevator.ID, remoteRecovering)
 	allHallOrders[localID] = UpdateLocalHallOrdersIfPossible(allHallOrders[localID], fromNetworkHallOrders(remoteHallOrders))
 	applyAvailabilityTransition(remoteElevator, allHallOrders, availableElevators)
 }
@@ -248,11 +314,13 @@ func RunOrderManager(
 	orderResetChan <-chan elevio.ButtonEvent,
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
+	allCabOrders types.CabOrders,
 	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
 
 	networkResendTicker := time.NewTicker(100 * time.Millisecond)
 	defer networkResendTicker.Stop()
+	cabOrderRecoveryDeadline := time.Now().Add(2 * time.Second)
 
 	for {
 		select {
@@ -292,10 +360,12 @@ func RunOrderManager(
 		case localElevator := <-localElevatorChan:
 			//log.Printf("orders: localElevator case")
 			dataMutex.Lock()
-			elevatorSnapshot, hallOrdersSnapshot := applyLocalElevatorUpdate(id, localElevator, allHallOrders, allElevators, availableElevators)
+			elevatorSnapshot, hallOrdersSnapshot := applyLocalElevatorUpdate(id, localElevator, allHallOrders, allElevators, allCabOrders, availableElevators)
+			recoveringCabOrders := time.Now().Before(cabOrderRecoveryDeadline)
+			allCabOrdersSnapshot := cloneCabOrders(allCabOrders)
 			dataMutex.Unlock()
 
-			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot)
+			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, allCabOrdersSnapshot, recoveringCabOrders)
 
 		case remoteElevator := <-network.NetworkRxChan():
 			if remoteElevator.Elevator.ID == id {
@@ -303,15 +373,23 @@ func RunOrderManager(
 			}
 
 			dataMutex.Lock()
-			applyRemoteElevatorUpdate(id, remoteElevator.Elevator, remoteElevator.HallOrders, allHallOrders, allElevators, availableElevators)
+			applyRemoteElevatorUpdate(id, remoteElevator.Elevator, remoteElevator.HallOrders, remoteElevator.CabOrders, remoteElevator.Recovering, allHallOrders, allElevators, allCabOrders, availableElevators)
+			var recoveredCabOrders []elevio.ButtonEvent
+			if time.Now().Before(cabOrderRecoveryDeadline) {
+				recoveredCabOrders = recoverLocalCabOrders(id, allCabOrders, allElevators)
+			}
 			dataMutex.Unlock()
+
+			for _, recoveredOrder := range recoveredCabOrders {
+				assignOrderChan <- recoveredOrder
+			}
 
 		case newCompletedOrder := <-completedOrderChan:
 			log.Printf("orders: completedOrderChan case")
 			if newCompletedOrder.Button == elevio.BT_Cab {
 				continue
 			}
-			
+
 			dataMutex.Lock()
 			if orders, ok := allHallOrders[id]; ok {
 				orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
@@ -322,8 +400,8 @@ func RunOrderManager(
 				// 	HallOrders    types.HallOrders
 				// 	ElevatorState types.ElevatorState
 				// }
-
-				network.NetworkSend(allElevators[id], allHallOrders[id])
+			    allCabOrdersSnapshot := cloneCabOrders(allCabOrders)
+				network.NetworkSend(allElevators[id], allHallOrders[id], allCabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
 			}
 			dataMutex.Unlock()
 
@@ -373,7 +451,8 @@ func RunOrderManager(
 			}
 
 			dataMutex.RLock()
-			network.NetworkSend(allElevators[id], allHallOrders[id])
+			allCabOrdersSnapshot := cloneCabOrders(allCabOrders)
+			network.NetworkSend(allElevators[id], allHallOrders[id], allCabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
 			dataMutex.RUnlock()
 
 		case orderToReset := <-orderResetChan:
@@ -399,9 +478,11 @@ func RunOrderManager(
 			dataMutex.RLock()
 			elevatorSnapshot := allElevators[id]
 			hallOrdersSnapshot := allHallOrders[id]
+			allCabOrdersSnapshot := cloneCabOrders(allCabOrders)
+			recoveringCabOrders := time.Now().Before(cabOrderRecoveryDeadline)
 			dataMutex.RUnlock()
 
-			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot)
+			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, allCabOrdersSnapshot, recoveringCabOrders)
 		}
 	}
 }
@@ -414,6 +495,7 @@ func OrdersInit(id string,
 
 	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
 	var allElevators = initAllElevators(id)
+	var allCabOrders = initCabOrdersAllElevators(id)
 	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
 	availableElevators[id] = true
 	var dataMutex sync.RWMutex
@@ -436,6 +518,7 @@ func OrdersInit(id string,
 		order_reset_chan,
 		allHallOrders,
 		allElevators,
+		allCabOrders,
 		availableElevators,
 		&dataMutex)
 }
