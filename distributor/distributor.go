@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/types"
 	"os/exec"
@@ -53,7 +54,7 @@ func directionToString(elevator types.Elevator) string {
 	return directionStrings[elevator.Dir]
 }
 
-func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[string]bool, allElevators types.AllElevators) ([]byte, error) {
+func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool, availableElevators map[string]bool, allElevators types.AllElevators) ([]byte, error) {
 
 	/* input format for distributor looks like this:
 		{
@@ -72,25 +73,25 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 		}
 	*/
 	type StateInputForDistributor struct {
-		State       string `json:"state"`
-		Floor       int    `json:"floor"`
-		Direction   string `json:"direction"`
-		CabRequests []bool `json:"cabRequests"`
+		State       string                `json:"state"`
+		Floor       int                   `json:"floor"`
+		Direction   string                `json:"direction"`
+		CabRequests [config.N_FLOORS]bool `json:"cabRequests"`
 	}
 	type DistributorInput struct {
-		HallRequests [][]bool                            `json:"hallRequests"`
-		States       map[string]StateInputForDistributor `json:"states"`
+		HallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool `json:"hallRequests"`
+		States       map[string]StateInputForDistributor         `json:"states"`
 	}
 
 	states := make(map[string]StateInputForDistributor, len(availableElevators))
 
 	for id, isActive := range availableElevators {
-		var cabRequests []bool
+		var cabRequests [config.N_FLOORS]bool
 		if !isActive {
 			continue
 		}
 		for floor := 0; floor < elev_struct.N_FLOORS; floor++ {
-			cabRequests = append(cabRequests, allElevators[id].Requests[floor][elevio.BT_Cab])
+			cabRequests[floor] = allElevators[id].Requests[floor][elevio.BT_Cab]
 		}
 		floor := allElevators[id].Floor
 		if floor < 0 {
@@ -119,22 +120,22 @@ func FormatInputForDistributor(hallRequests [][]bool, availableElevators map[str
 	if err != nil {
 		return nil, fmt.Errorf("marshal error: %w", err)
 	}
-	
+
 	return data, nil
 }
 
-func ParseDistributorOutput(output []byte) (map[string][][]bool, error) {
-	var assignments map[string][][]bool
+func ParseDistributorOutput(output []byte) (map[string][config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
+	var assignments map[string][config.N_FLOORS][config.N_BUTTONS - 1]bool
 	if err := json.Unmarshal(output, &assignments); err != nil {
 		return nil, err
 	}
 	return assignments, nil
 }
 
-func HallOrdersForID(output []byte, id string) ([][]bool, bool, error) {
+func HallOrdersForID(output []byte, id string) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, bool, error) {
 	assignments, err := ParseDistributorOutput(output)
 	if err != nil {
-		return nil, false, err
+		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, false, err
 	}
 	hallOrders, ok := assignments[id]
 
