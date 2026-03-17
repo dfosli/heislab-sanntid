@@ -13,7 +13,7 @@ import (
 )
 
 type OrderState = types.OrderState
-type HallOrders = types.HallOrders
+type AllHallOrders = types.AllHallOrders
 
 const (
 	NONE      = types.NONE
@@ -37,14 +37,14 @@ func initAllElevators(id string) types.AllElevators {
 	return allElevators
 }
 
-func initCabOrdersAllElevators(id string) types.CabOrders {
-	allCabOrders := make(types.CabOrders)
+func initCabOrdersAllElevators(id string) types.AllCabOrders {
+	allCabOrders := make(types.AllCabOrders)
 	allCabOrders[id] = elev_struct.GetCabOrders(elev_struct.ElevatorInit(id))
 	return allCabOrders
 }
 
-func setAllOrders(orderState OrderState) HallOrders {
-	var hallOrders HallOrders
+func setAllOrders(orderState OrderState) AllHallOrders {
+	var hallOrders AllHallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			hallOrders[floor][btn] = orderState
@@ -56,8 +56,8 @@ func setAllOrders(orderState OrderState) HallOrders {
 func confirmHallOrders(
 	localID string,
 	order_confirmed_chan chan<- elevio.ButtonEvent,
-	allHallOrders *HallOrdersAllElevators,
-	availableElevators *map[string]bool,
+	allHallOrders HallOrdersAllElevators,
+	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
 
 	var confirmAlreadySent [config.N_FLOORS][config.N_BUTTONS - 1]bool
@@ -68,7 +68,7 @@ func confirmHallOrders(
 
 		dataMutex.RLock()
 		hasAvailable := false
-		for _, isAvailable := range *availableElevators {
+		for _, isAvailable := range availableElevators {
 			if isAvailable {
 				hasAvailable = true
 				break
@@ -79,7 +79,7 @@ func confirmHallOrders(
 			continue
 		}
 
-		localOrders, ok := (*allHallOrders)[localID]
+		localOrders, ok := allHallOrders[localID]
 		if !ok {
 			dataMutex.RUnlock()
 			continue
@@ -107,8 +107,8 @@ func confirmHallOrders(
 func resetHallOrders(
 	localID string,
 	order_reset_chan chan<- elevio.ButtonEvent,
-	allHallOrders *HallOrdersAllElevators,
-	availableElevators *map[string]bool,
+	allHallOrders HallOrdersAllElevators,
+	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
 
 	var resetAlreadySent [config.N_FLOORS][config.N_BUTTONS - 1]bool
@@ -119,7 +119,7 @@ func resetHallOrders(
 
 		dataMutex.RLock()
 		hasAvailable := false
-		for _, isAvailable := range *availableElevators {
+		for _, isAvailable := range availableElevators {
 			if isAvailable {
 				hasAvailable = true
 				break
@@ -130,7 +130,7 @@ func resetHallOrders(
 			continue
 		}
 
-		localOrders, ok := (*allHallOrders)[localID]
+		localOrders, ok := allHallOrders[localID]
 		if !ok {
 			dataMutex.RUnlock()
 			continue
@@ -155,7 +155,7 @@ func resetHallOrders(
 	}
 }
 
-func rollbackHallOrders(hallOrders HallOrders) HallOrders {
+func rollbackHallOrders(hallOrders AllHallOrders) AllHallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if hallOrders[floor][btn] == ASSIGNED || hallOrders[floor][btn] == CONFIRMED {
@@ -166,7 +166,7 @@ func rollbackHallOrders(hallOrders HallOrders) HallOrders {
 	return hallOrders
 }
 
-func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders HallOrders) HallOrders {
+func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders AllHallOrders) AllHallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if assignedOrders[floor][btn] {
@@ -191,8 +191,8 @@ func applyLocalElevatorUpdate(
 	localElevator elev_struct.Elevator,
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
-	allCabOrders types.CabOrders,
-	availableElevators map[string]bool) (types.Elevator, HallOrders) {
+	allCabOrders types.AllCabOrders,
+	availableElevators map[string]bool) (types.Elevator, AllHallOrders) {
 
 	allElevators[localID] = localElevator
 	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
@@ -214,12 +214,12 @@ func applyRemoteElevatorUpdate(
 	remoteElevatorMsg network.NetworkMsg,
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
-	allCabOrders types.CabOrders) {
+	allCabOrders types.AllCabOrders) {
 
 	allElevators[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.Elevator
 	allHallOrders[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.HallOrders
 
-	mergeCabOrders(allCabOrders, remoteElevatorMsg.CabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.CabOrdersRecovering)
+	mergeCabOrders(allCabOrders, remoteElevatorMsg.AllCabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.CabOrdersRecovering)
 	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
 }
 
@@ -234,7 +234,7 @@ func RunOrderManager(
 	orderResetChan <-chan elevio.ButtonEvent,
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
-	allCabOrders types.CabOrders,
+	allCabOrders types.AllCabOrders,
 	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
 
@@ -319,8 +319,8 @@ func RunOrderManager(
 
 			shouldSend := false
 			var elevatorSnapshot elev_struct.Elevator
-			var hallOrdersSnapshot HallOrders
-			var cabOrdersSnapshot types.CabOrders
+			var hallOrdersSnapshot AllHallOrders
+			var cabOrdersSnapshot types.AllCabOrders
 
 			dataMutex.Lock()
 			if orders, ok := allHallOrders[id]; ok {
@@ -416,37 +416,49 @@ func RunOrderManager(
 }
 
 func OrdersInit(id string,
-	reassignLocalHallOrdersChan chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool,
-	recoveredCabOrdersChan chan<- [config.N_FLOORS]bool,
-	completedOrderChan <-chan elevio.ButtonEvent,
-	localElevatorChan <-chan types.Elevator) {
+	reassignLocalHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+	recoveredCabOrdersCh chan<- [config.N_FLOORS]bool,
+	completedOrderCh <-chan elevio.ButtonEvent,
+	localElevatorCh <-chan types.Elevator) {
 
-	var allHallOrders HallOrdersAllElevators = initHallOrdersAllElevators(id) //bruk mutex rundt denne
-	var allElevators = initAllElevators(id)
-	var allCabOrders = initCabOrdersAllElevators(id)
-	var availableElevators = make(map[string]bool) //bruk mutex rundt denne
-	availableElevators[id] = true
+	allHallOrders := initHallOrdersAllElevators(id)
+	allElevators := initAllElevators(id)
+	allCabOrders := initCabOrdersAllElevators(id)
+
+	availableElevators := map[string]bool{id: true}
 	var dataMutex sync.RWMutex
 
-	orderConfirmedChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	orderResetChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	hallLightChan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
+	orderConfirmedCh := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	orderResetCh := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
+	hallLightCh := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
 
-	go confirmHallOrders(id, orderConfirmedChan, &allHallOrders, &availableElevators, &dataMutex)
-	go resetHallOrders(id, orderResetChan, &allHallOrders, &availableElevators, &dataMutex)
+	go confirmHallOrders(
+		id,
+		orderConfirmedCh,
+		allHallOrders,
+		availableElevators,
+		&dataMutex)
+
+	go resetHallOrders(
+		id,
+		orderResetCh,
+		allHallOrders,
+		availableElevators,
+		&dataMutex)
 
 	go RunOrderManager(
 		id,
-		localElevatorChan,
-		completedOrderChan,
-		reassignLocalHallOrdersChan,
-		recoveredCabOrdersChan,
-		hallLightChan,
-		orderConfirmedChan,
-		orderResetChan,
+		localElevatorCh,
+		completedOrderCh,
+		reassignLocalHallOrdersCh,
+		recoveredCabOrdersCh,
+		hallLightCh,
+		orderConfirmedCh,
+		orderResetCh,
 		allHallOrders,
 		allElevators,
 		allCabOrders,
 		availableElevators,
 		&dataMutex)
+
 }
