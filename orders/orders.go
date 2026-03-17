@@ -276,7 +276,13 @@ func applyRemoteElevatorUpdate(
 	mergeCabOrders(allCabOrders, remoteElevatorMsg.CabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.Recovering)
 	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders, hallLightChan)
 }
-
+func handleHallLightChan(hallLightChan chan elev_struct.LightEvent) {
+	for hallLightEvent := range hallLightChan {
+			//time.Sleep(10 * time.Millisecond)
+			fmt.Printf("hallLightChan case, floor: %d, button: %d, on: %v", hallLightEvent.Floor, hallLightEvent.Button, hallLightEvent.On)
+			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
+		}
+}
 func RunOrderManager(
 	id string,
 	localElevatorChan <-chan types.Elevator,
@@ -440,21 +446,13 @@ func RunOrderManager(
 		case orderToReset := <-orderResetChan:
 			fmt.Printf("ResetChan case, floor: %d, button: %d", orderToReset.Floor, orderToReset.Button)
 			dataMutex.Lock()
-			for id, isAvailable := range availableElevators {
-				if isAvailable {
-					if orders, ok := allHallOrders[id]; ok {
-						orders[orderToReset.Floor][orderToReset.Button] = NONE
-						allHallOrders[id] = orders
-					}
-				}
+			for id, orders := range allHallOrders {
+				orders[orderToReset.Floor][orderToReset.Button] = NONE
+				allHallOrders[id] = orders
 			}
 			dataMutex.Unlock()
 
 			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
-
-		case hallLightEvent := <-hallLightChan:
-			fmt.Printf("hallLightChan case, floor: %d, button: %d, on: %v", hallLightEvent.Floor, hallLightEvent.Button, hallLightEvent.On)
-			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
 
 		case <-networkResendTicker.C:
 			dataMutex.RLock()
@@ -485,6 +483,8 @@ func OrdersInit(id string,
 	orderConfirmedChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 	orderResetChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 	hallLightChan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
+
+	go handleHallLightChan(hallLightChan)
 
 	go confirmHallOrders(id, orderConfirmedChan, &allHallOrders, &availableElevators, &dataMutex)
 	go resetHallOrders(id, orderResetChan, &allHallOrders, &availableElevators, &dataMutex)
