@@ -9,7 +9,7 @@ import (
 
 type NetworkMsg struct {
 	Elevator            types.Elevator
-	HallOrders          types.AllHallOrders
+	HallOrders          types.HallOrders
 	AllCabOrders        types.AllCabOrders
 	CabOrdersRecovering bool
 }
@@ -34,7 +34,7 @@ func NetworkInit(id string) {
 	go bcast.Receiver(16569, networkRx)
 }
 
-func NetworkSend(elevator types.Elevator, hallOrders types.AllHallOrders, cabOrders types.AllCabOrders, recovering bool) {
+func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders, cabOrders types.AllCabOrders, recovering bool) {
 	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders, AllCabOrders: cabOrders, CabOrdersRecovering: recovering}
 	networkTx <- msg
 }
