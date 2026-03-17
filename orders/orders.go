@@ -23,7 +23,7 @@ const (
 	COMPLETED = types.COMPLETED
 )
 
-type HallOrdersAllElevators = types.HallOrdersAllElevators
+type HallOrdersAllElevators map[string]AllHallOrders
 
 func initHallOrdersAllElevators(id string) HallOrdersAllElevators {
 	allHallOrders := make(HallOrdersAllElevators)

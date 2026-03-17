@@ -19,5 +19,3 @@ const (
 	ASSIGNED
 	COMPLETED
 )
-
-type HallOrdersAllElevators map[string]AllHallOrders
