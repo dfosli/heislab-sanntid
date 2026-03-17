@@ -26,12 +26,6 @@ const (
 	COMPLETED = types.COMPLETED
 )
 
-func initHallOrdersAllElevators(id string) AllHallOrders {
-	allHallOrders := make(AllHallOrders)
-	allHallOrders[id] = setAllOrders(NONE)
-	return allHallOrders
-}
-
 func initAllElevators(id string) AllElevators {
 	allElevators := make(AllElevators)
 	allElevators[id] = elev_struct.ElevatorInit(id)
