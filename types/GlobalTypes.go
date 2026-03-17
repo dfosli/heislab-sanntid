@@ -8,7 +8,7 @@ import (
 type OrderState int
 type Elevator = elev_struct.Elevator
 
-type AllHallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
+type HallOrders [config.N_FLOORS][config.N_BUTTONS - 1]OrderState
 type AllCabOrders map[string][config.N_FLOORS]bool
 type AllElevators map[string]Elevator
 
@@ -20,4 +20,4 @@ const (
 	COMPLETED
 )
 
-type HallOrdersAllElevators map[string]AllHallOrders
+type HallOrdersAllElevators map[string]HallOrders

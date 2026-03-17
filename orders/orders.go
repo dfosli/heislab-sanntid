@@ -13,7 +13,7 @@ import (
 )
 
 type OrderState = types.OrderState
-type AllHallOrders = types.AllHallOrders
+type HallOrders = types.HallOrders
 
 const (
 	NONE      = types.NONE
@@ -43,8 +43,8 @@ func initCabOrdersAllElevators(id string) types.AllCabOrders {
 	return allCabOrders
 }
 
-func setAllOrders(orderState OrderState) AllHallOrders {
-	var hallOrders AllHallOrders
+func setAllOrders(orderState OrderState) HallOrders {
+	var hallOrders HallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			hallOrders[floor][btn] = orderState
@@ -185,7 +185,7 @@ func resetHallOrders(
 	}
 }
 
-func rollbackHallOrders(hallOrders AllHallOrders) AllHallOrders {
+func rollbackHallOrders(hallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if hallOrders[floor][btn] == ASSIGNED || hallOrders[floor][btn] == CONFIRMED {
@@ -196,7 +196,7 @@ func rollbackHallOrders(hallOrders AllHallOrders) AllHallOrders {
 	return hallOrders
 }
 
-func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders AllHallOrders) AllHallOrders {
+func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if assignedOrders[floor][btn] {
@@ -207,13 +207,11 @@ func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]b
 	return hallOrders
 }
 
-func handleElevatorUnavailable(unavailableID string, allHallOrders HallOrdersAllElevators, availableElevators map[string]bool) {
-	for id, isAvailable := range availableElevators {
-		if isAvailable && id != unavailableID {
-			allHallOrders[id] = rollbackHallOrders(allHallOrders[id])
-		}
-	}
+func handleElevatorUnavailable(localID string, unavailableID string, allHallOrders HallOrdersAllElevators) {
 	allHallOrders[unavailableID] = setAllOrders(NONE)
+	if localID != unavailableID {
+		allHallOrders[localID] = rollbackHallOrders(allHallOrders[localID])
+	}
 }
 
 func applyLocalElevatorUpdate(
@@ -222,16 +220,23 @@ func applyLocalElevatorUpdate(
 	allHallOrders HallOrdersAllElevators,
 	allElevators types.AllElevators,
 	allCabOrders types.AllCabOrders,
-	availableElevators map[string]bool) (types.Elevator, AllHallOrders) {
+	availableElevators map[string]bool) (types.Elevator, HallOrders) {
 
 	allElevators[localID] = localElevator
 	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
 
+	wasAvailable := availableElevators[localElevator.ID]
+
 	if localElevator.Stuck && availableElevators[localElevator.ID] {
 		availableElevators[localElevator.ID] = false
-		handleElevatorUnavailable(localElevator.ID, allHallOrders, availableElevators)
+		handleElevatorUnavailable(localID, localElevator.ID, allHallOrders)
 	} else if !localElevator.Stuck && !availableElevators[localElevator.ID] {
 		availableElevators[localElevator.ID] = true
+	}
+
+	isAvailable := availableElevators[localElevator.ID]
+	if wasAvailable != isAvailable {
+		network.SetPeerTxEnable(isAvailable)
 	}
 
 	allHallOrders[localID] = AddNewLocalOrder(allHallOrders[localID], localElevator.Requests)
@@ -289,16 +294,7 @@ func RunOrderManager(
 						allElevators[peer] = elev_struct.ElevatorInit(peer)
 					} else if !availableElevators[peer] {
 						availableElevators[peer] = true
-
-						for elevID, isAvailable := range availableElevators {
-							if isAvailable {
-								if orders, ok := allHallOrders[elevID]; ok {
-									orders = rollbackHallOrders(orders)
-									allHallOrders[elevID] = orders
-								}
-							}
-						}
-
+						allHallOrders[id] = rollbackHallOrders(allHallOrders[id])
 					}
 				}
 			}
@@ -309,24 +305,18 @@ func RunOrderManager(
 				}
 				if availableElevators[lostPeer] {
 					availableElevators[lostPeer] = false
-					handleElevatorUnavailable(lostPeer, allHallOrders, availableElevators)
+					handleElevatorUnavailable(id, lostPeer, allHallOrders)
 				}
 			}
 			dataMutex.Unlock()
 
 		case localElevator := <-localElevatorCh:
-			//fmt.Println("localElevator case")
+			// fmt.Println("localElevator case\n")
 			dataMutex.Lock()
-			wasAvailable := availableElevators[id]
 			elevatorSnapshot, hallOrdersSnapshot := applyLocalElevatorUpdate(id, localElevator, allHallOrders, allElevators, allCabOrders, availableElevators)
-			isAvailable := availableElevators[id]
 			recoveringCabOrders := time.Now().Before(cabOrderRecoveryDeadline)
 			cabOrdersSnapshot := maps.Clone(allCabOrders)
 			dataMutex.Unlock()
-
-			if wasAvailable != isAvailable {
-				network.SetPeerTxEnable(isAvailable)
-			}
 
 			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, cabOrdersSnapshot, recoveringCabOrders)
 
@@ -362,7 +352,7 @@ func RunOrderManager(
 
 			shouldSend := false
 			var elevatorSnapshot elev_struct.Elevator
-			var hallOrdersSnapshot AllHallOrders
+			var hallOrdersSnapshot HallOrders
 			var cabOrdersSnapshot types.AllCabOrders
 
 			dataMutex.Lock()
