@@ -18,15 +18,13 @@ import (
 func UpdateLocalHallOrders(localHallOrders AllHallOrders, remoteHallOrders AllHallOrders) AllHallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			if localHallOrders[floor][btn] == COMPLETED && remoteHallOrders[floor][btn] == NONE {
-				localHallOrders[floor][btn] = NONE
-				//hallLightChan <- elev_struct.LightEvent{Floor: floor, Button: elevio.ButtonType(btn), On: false}
-			}
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
 				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {
 					continue
-				} //this if will always update to higher order states, unless it is an update from NONE to COMPLETED
-				//! should we trigger distribution if jump past barrier?
+				}
+				if localHallOrders[floor][btn] == NEW && remoteHallOrders[floor][btn] >= CONFIRMED {
+					continue
+				}
 				(localHallOrders)[floor][btn] = remoteHallOrders[floor][btn]
 			}
 		}
@@ -40,6 +38,7 @@ func AddNewLocalOrder(hallOrders AllHallOrders, requests elev_struct.Requests) A
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if requests[floor][btn] && hallOrders[floor][btn] == NONE {
 				hallOrders[floor][btn] = NEW
+				fmt.Printf("New local order added, floor: %d, button: %d\n", floor, btn)
 			}
 		}
 	}
@@ -113,7 +112,7 @@ func recoverLocalCabOrders(localID string, allCabOrders types.AllCabOrders, allE
 			continue
 		}
 
-		// localElevator.Requests[floor][elevio.BT_Cab] = true
+		localElevator.Requests[floor][elevio.BT_Cab] = true
 		recoveredOrders[floor] = true
 	}
 
