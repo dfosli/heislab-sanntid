@@ -123,7 +123,10 @@ func RunElevator(
 			if elevator.Obstructed {
 				state_machine.OnObstruction(elevator, doorTimer)
 			}
-			elevOutCh <- elevator
+			select {
+			case elevOutCh <- elevator:
+			default:
+			}
 		}
 	}
 }
