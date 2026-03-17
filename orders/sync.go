@@ -15,7 +15,7 @@ import (
 // }
 // Nuked this func since it is useless. DB.
 
-func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
+func UpdateLocalHallOrders(localHallOrders AllHallOrders, remoteHallOrders AllHallOrders) AllHallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
@@ -33,7 +33,7 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 	return localHallOrders
 }
 
-func AddNewLocalOrder(hallOrders HallOrders, requests elev_struct.Requests) HallOrders {
+func AddNewLocalOrder(hallOrders AllHallOrders, requests elev_struct.Requests) AllHallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if requests[floor][btn] && hallOrders[floor][btn] == NONE {
@@ -45,7 +45,7 @@ func AddNewLocalOrder(hallOrders HallOrders, requests elev_struct.Requests) Hall
 	return hallOrders
 }
 
-func hallOrdersToBoolMatrix(hallOrders HallOrders) [config.N_FLOORS][config.N_BUTTONS - 1]bool {
+func hallOrdersToBoolMatrix(hallOrders AllHallOrders) [config.N_FLOORS][config.N_BUTTONS - 1]bool {
 	hallRequests := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 	for floor := 0; floor < len(hallOrders); floor++ {
 		for btn := 0; btn < len(hallOrders[floor]); btn++ {
@@ -56,7 +56,7 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [config.N_FLOORS][config.N_BU
 	return hallRequests
 }
 
-func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevators types.AllElevators) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
+func ReassignOrders(id string, hallOrders AllHallOrders, availableElevators map[string]bool, allElevators types.AllElevators) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
 	hallRequests := hallOrdersToBoolMatrix(hallOrders)
 	formattedOrders, err := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevators)
 	if err != nil {
@@ -85,7 +85,7 @@ func hasCabOrders(cabOrders [config.N_FLOORS]bool) bool {
 	return false
 }
 
-func mergeCabOrders(allCabOrders types.CabOrders, remoteCabOrders types.CabOrders, remoteID string, remoteRecovering bool) {
+func mergeCabOrders(allCabOrders types.AllCabOrders, remoteCabOrders types.AllCabOrders, remoteID string, remoteRecovering bool) {
 	for id, cabOrders := range remoteCabOrders {
 		if remoteRecovering && id == remoteID && !hasCabOrders(cabOrders) {
 			continue //!This can theoretically cause caborder loss if a recovering elevator receives a caborder Very quickly, before it receives its caborders from other elevators.
@@ -94,7 +94,7 @@ func mergeCabOrders(allCabOrders types.CabOrders, remoteCabOrders types.CabOrder
 	}
 }
 
-func recoverLocalCabOrders(localID string, allCabOrders types.CabOrders, allElevators types.AllElevators) [config.N_FLOORS]bool {
+func recoverLocalCabOrders(localID string, allCabOrders types.AllCabOrders, allElevators types.AllElevators) [config.N_FLOORS]bool {
 	var recoveredOrders [config.N_FLOORS]bool
 
 	localCabOrders, ok := allCabOrders[localID]
