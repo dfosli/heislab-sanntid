@@ -9,8 +9,8 @@ import (
 
 type NetworkMsg struct {
 	Elevator            types.Elevator
-	HallOrders          types.HallOrders
-	CabOrders           types.CabOrders
+	HallOrders          types.AllHallOrders
+	AllCabOrders        types.AllCabOrders
 	CabOrdersRecovering bool
 }
 
@@ -34,8 +34,8 @@ func NetworkInit(id string) {
 	go bcast.Receiver(16569, networkRx)
 }
 
-func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders, cabOrders types.CabOrders, recovering bool) {
-	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders, CabOrders: cabOrders, CabOrdersRecovering: recovering}
+func NetworkSend(elevator types.Elevator, hallOrders types.AllHallOrders, cabOrders types.AllCabOrders, recovering bool) {
+	msg := NetworkMsg{Elevator: elevator, HallOrders: hallOrders, AllCabOrders: cabOrders, CabOrdersRecovering: recovering}
 	networkTx <- msg
 }
 
@@ -50,15 +50,3 @@ func Peers() <-chan peers.PeerUpdate {
 func SetPeerTxEnable(enable bool) {
 	peerTxEnable <- enable
 }
-
-// func HasVisiblePeers() bool { //! denne funksjonen leser rett fra kanalen, og "stjeler" oppdateringer fra hovedløkken i orders.go.
-// 	select {
-// 	case peers := <-peerUpdateCh:
-// 		if len(peers.Peers) > 0 {
-// 			return true
-// 		}
-// 		return false
-// 	default:
-// 		return false
-// 	}
-// }
