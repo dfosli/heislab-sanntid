@@ -18,13 +18,13 @@ const (
 
 func RunElevator(
 	id string,
-	drvButtonsChan <-chan elevio.ButtonEvent,
-	drvFloorsChan <-chan int,
-	drvObstrChan <-chan bool,
-	reassignedHallOrdersChan <-chan [N_FLOORS][N_BUTTONS - 1]bool,
-	recoveredCabOrdersChan <-chan [N_FLOORS]bool,
-	completedOrderChan chan<- elevio.ButtonEvent,
-	elevOutChan chan<- elev_struct.Elevator) {
+	drvButtonsCh <-chan elevio.ButtonEvent,
+	drvFloorsCh <-chan int,
+	drvObstrCh <-chan bool,
+	reassignedHallOrdersCh <-chan [N_FLOORS][N_BUTTONS - 1]bool,
+	recoveredCabOrdersCh <-chan [N_FLOORS]bool,
+	completedOrderCh chan<- elevio.ButtonEvent,
+	elevOutCh chan<- elev_struct.Elevator) {
 
 	elevator := elev_struct.ElevatorInit(id)
 	elevator.Floor = elevio.GetFloor()
@@ -36,7 +36,7 @@ func RunElevator(
 
 	for {
 		select {
-		case reassignedHallOrders := <-reassignedHallOrdersChan:
+		case reassignedHallOrders := <-reassignedHallOrdersCh:
 			previousRequests := elevator.Requests
 			for floor := 0; floor < N_FLOORS; floor++ {
 				for btn := 0; btn < N_BUTTONS-1; btn++ {
@@ -52,13 +52,13 @@ func RunElevator(
 							elevio.ButtonType(btn),
 							doorTimer,
 							stuckTimer,
-							completedOrderChan,
+							completedOrderCh,
 						)
 					}
 				}
 			}
 
-		case recoveredCabOrders := <-recoveredCabOrdersChan:
+		case recoveredCabOrders := <-recoveredCabOrdersCh:
 			for floor := 0; floor < N_FLOORS; floor++ {
 				if recoveredCabOrders[floor] && !elevator.Requests[floor][elevio.BT_Cab] {
 					elevator = state_machine.OnRequestButtonPress(
@@ -67,13 +67,12 @@ func RunElevator(
 						elevio.BT_Cab,
 						doorTimer,
 						stuckTimer,
-						completedOrderChan,
+						completedOrderCh,
 					)
 				}
 			}
-			elevOutChan <- elevator
 
-		case btnEvent := <-drvButtonsChan:
+		case btnEvent := <-drvButtonsCh:
 			if btnEvent.Button == elevio.BT_Cab {
 				elevator = state_machine.OnRequestButtonPress(
 					elevator,
@@ -81,24 +80,24 @@ func RunElevator(
 					btnEvent.Button,
 					doorTimer,
 					stuckTimer,
-					completedOrderChan,
+					completedOrderCh,
 				)
-				elevOutChan <- elevator
+				elevOutCh <- elevator
 				continue
 			}
 
 			elevatorWithNewOrder := elevator
 			elevatorWithNewOrder.Requests[btnEvent.Floor][btnEvent.Button] = true
-			elevOutChan <- elevatorWithNewOrder
+			elevOutCh <- elevatorWithNewOrder
 
-		case newFloor := <-drvFloorsChan:
-			elevator = state_machine.OnFloorArrival(elevator, newFloor, doorTimer, completedOrderChan)
+		case newFloor := <-drvFloorsCh:
+			elevator = state_machine.OnFloorArrival(elevator, newFloor, doorTimer, completedOrderCh)
 			stuckTimer.Reset(STALL_TIME)
 			if elevator.Stuck {
 				elevator.Stuck = false
 			}
 
-		case obstructionSwitch := <-drvObstrChan:
+		case obstructionSwitch := <-drvObstrCh:
 			if obstructionSwitch {
 				state_machine.OnObstruction(elevator, doorTimer)
 				elevator.Obstructed = true
@@ -107,7 +106,7 @@ func RunElevator(
 			}
 
 		case <-doorTimer.C:
-			elevator = state_machine.OnDoorTimeout(elevator, doorTimer, completedOrderChan)
+			elevator = state_machine.OnDoorTimeout(elevator, doorTimer, completedOrderCh)
 			stuckTimer.Reset(STALL_TIME)
 			if elevator.Stuck {
 				elevator.Stuck = false
@@ -117,14 +116,14 @@ func RunElevator(
 			if elevator.State != elev_struct.Idle {
 				elevator.Stuck = true
 				elevator = elev_struct.ClearLocalHallOrders(elevator)
-				log.Printf("stuck timer case")
+				log.Printf("stuck timer expired")
 			}
 
 		case <-publishTicker.C:
 			if elevator.Obstructed {
 				state_machine.OnObstruction(elevator, doorTimer)
 			}
-			elevOutChan <- elevator
+			elevOutCh <- elevator
 		}
 	}
 }
@@ -143,6 +142,7 @@ func ElevatorInit(
 	if startFloor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Down)
 		for {
+			time.Sleep(10 * time.Millisecond)
 			floor := elevio.GetFloor()
 			if floor != -1 {
 				elevio.SetMotorDirection(elevio.MD_Stop)
