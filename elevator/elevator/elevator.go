@@ -71,7 +71,6 @@ func RunElevator(
 					)
 				}
 			}
-			elevOutChan <- elevator
 
 		case btnEvent := <-drvButtonsChan:
 			if btnEvent.Button == elevio.BT_Cab {
@@ -117,7 +116,7 @@ func RunElevator(
 			if elevator.State != elev_struct.Idle {
 				elevator.Stuck = true
 				elevator = elev_struct.ClearLocalHallOrders(elevator)
-				log.Printf("stuck timer case")
+				log.Printf("stuck timer expired")
 			}
 
 		case <-publishTicker.C:
@@ -143,6 +142,7 @@ func ElevatorInit(
 	if startFloor == -1 {
 		elevio.SetMotorDirection(elevio.MD_Down)
 		for {
+			time.Sleep(10 * time.Millisecond)
 			floor := elevio.GetFloor()
 			if floor != -1 {
 				elevio.SetMotorDirection(elevio.MD_Stop)
