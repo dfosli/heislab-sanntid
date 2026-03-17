@@ -25,6 +25,9 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 				newState = NONE
 			}
 			if newState < remoteHallOrders[floor][btn] {
+				if newState == NONE && remoteHallOrders[floor][btn] == COMPLETED {
+					continue
+				}
 				newState = remoteHallOrders[floor][btn]
 			}
 
