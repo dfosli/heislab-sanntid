@@ -264,7 +264,6 @@ func RunOrderManager(
 	completedOrderChan <-chan elevio.ButtonEvent,
 	reassignedHallOrdersChan chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	recoveredCabOrdersChan chan<- [config.N_FLOORS]bool,
-	hallLightChan chan elev_struct.LightEvent,
 	orderConfirmedChan <-chan elevio.ButtonEvent,
 	orderResetChan <-chan elevio.ButtonEvent,
 	allHallOrders HallOrdersAllElevators,
@@ -404,7 +403,7 @@ func RunOrderManager(
 			cabOrdersSnapshot := maps.Clone(allCabOrders)
 			dataMutex.Unlock()
 
-			hallLightChan <- elev_struct.LightEvent{Floor: orderToConfirm.Floor, Button: elevio.ButtonType(orderToConfirm.Button), On: true}
+			elevio.SetButtonLamp(orderToConfirm.Button, orderToConfirm.Floor, true)
 
 			reassignedHallOrdersChan <- hallOrdersForId
 
@@ -418,11 +417,7 @@ func RunOrderManager(
 			allHallOrders[id] = localOrders
 			dataMutex.Unlock()
 
-			hallLightChan <- elev_struct.LightEvent{Floor: orderToReset.Floor, Button: elevio.ButtonType(orderToReset.Button), On: false}
-
-		case hallLightEvent := <-hallLightChan:
-			fmt.Printf("hallLightChan case, floor: %d, button: %d, on: %v\n", hallLightEvent.Floor, hallLightEvent.Button, hallLightEvent.On)
-			elevio.SetButtonLamp(hallLightEvent.Button, hallLightEvent.Floor, hallLightEvent.On)
+			elevio.SetButtonLamp(orderToReset.Button, orderToReset.Floor, false)
 
 		case <-networkResendTicker.C:
 			dataMutex.RLock()
@@ -452,7 +447,6 @@ func OrdersInit(id string,
 
 	orderConfirmedChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
 	orderResetChan := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
-	hallLightChan := make(chan elev_struct.LightEvent, config.BUFFER_SIZE)
 
 	go confirmHallOrders(id, orderConfirmedChan, &allHallOrders, &availableElevators, &dataMutex)
 	go resetHallOrders(orderResetChan, &allHallOrders, &availableElevators, &dataMutex)
@@ -463,7 +457,6 @@ func OrdersInit(id string,
 		completedOrderChan,
 		reassignLocalHallOrdersChan,
 		recoveredCabOrdersChan,
-		hallLightChan,
 		orderConfirmedChan,
 		orderResetChan,
 		allHallOrders,
