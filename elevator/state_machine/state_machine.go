@@ -74,7 +74,6 @@ func OnFloorArrival(elev elev_struct.Elevator, newFloor int, doorTimer *time.Tim
 			elev_struct.SetCabLights(elev)
 		}
 	}
-
 	return elev
 }
 
