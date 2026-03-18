@@ -68,7 +68,7 @@ func confirmHallOrders(
 			for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 				allAtLeastNew := true
 				for elevID, isAvailable := range availableElevators {
-					if !isAvailable {
+					if !isAvailable && elevID != localID {
 						continue
 					}
 					orders, ok := allHallOrders[elevID]
@@ -105,6 +105,7 @@ func confirmHallOrders(
 }
 
 func resetHallOrders(
+	localID string,
 	orderResetCh chan<- elevio.ButtonEvent,
 	allHallOrders AllHallOrders,
 	availableElevators map[string]bool,
@@ -134,7 +135,7 @@ func resetHallOrders(
 				allCompletedOrNone := true
 				atLeastOneCompleted := false
 				for elevID, isAvailable := range availableElevators {
-					if !isAvailable {
+					if !isAvailable && elevID != localID {
 						continue
 					}
 					orders, ok := allHallOrders[elevID]
@@ -194,7 +195,6 @@ func applyLocalElevatorUpdate(
 	}
 
 	allHallOrders[localID] = AddNewLocalOrder(allHallOrders[localID], localElevator.Requests)
-
 }
 
 func applyRemoteElevatorUpdate(
@@ -207,7 +207,7 @@ func applyRemoteElevatorUpdate(
 
 	mergeCabOrders(allCabOrders, remoteElevatorMsg.AllCabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.CabOrdersRecovering)
 
-	if !availableElevators[remoteElevatorMsg.Elevator.ID] {
+	if !availableElevators[remoteElevatorMsg.Elevator.ID] && !remoteElevatorMsg.Elevator.Stuck {
 		return
 	}
 
@@ -250,23 +250,27 @@ func runOrderManager(
 			fmt.Printf("peer update case, peers: %v\n", peerUpdate.Peers)
 			dataMutex.Lock()
 			for _, peer := range peerUpdate.Peers {
-				if peer != id {
-					if _, ok := availableElevators[peer]; !ok {
-						availableElevators[peer] = true
-						allHallOrders[peer] = setAllOrders(NONE)
-						allElevators[peer] = elev_struct.ElevatorInit(peer)
-					} else if !availableElevators[peer] {
-						availableElevators[peer] = true
-					}
+				if peer == id {
+					continue
+				}
+				if _, ok := availableElevators[peer]; !ok {
+					availableElevators[peer] = true
+					allHallOrders[peer] = setAllOrders(NONE)
+					allElevators[peer] = elev_struct.ElevatorInit(peer)
+				} else if !availableElevators[peer] {
+					availableElevators[peer] = true
 				}
 			}
+
 			for _, lostPeer := range peerUpdate.Lost {
 				if lostPeer == id {
 					continue
 				}
 				if availableElevators[lostPeer] {
 					availableElevators[lostPeer] = false
-					handleElevatorUnavailable(id, lostPeer, allHallOrders)
+					if availableElevators[id] {
+						handleElevatorUnavailable(id, lostPeer, allHallOrders)
+					}
 				}
 			}
 			dataMutex.Unlock()
@@ -311,25 +315,31 @@ func runOrderManager(
 
 		case orderToConfirm := <-orderConfirmedCh:
 			dataMutex.Lock()
-			if !availableElevators[id] {
+			localOrders := allHallOrders[id]
+			if localOrders[orderToConfirm.Floor][orderToConfirm.Button] != NEW {
 				dataMutex.Unlock()
 				continue
 			}
 
 			fmt.Printf("ConfirmedCh case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
-			localOrders := allHallOrders[id]
 			localOrders[orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
 			allHallOrders[id] = localOrders
 
-			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
-			if err != nil {
-				fmt.Printf("Error reassigning orders: %v\n", err)
-				localOrders[orderToConfirm.Floor][orderToConfirm.Button] = NEW
-				allHallOrders[id] = localOrders
-				dataMutex.Unlock()
-				continue
+			hallOrdersForId := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
+			if availableElevators[id] {
+				var err error = nil
+				hallOrdersForId, err = ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
+				if err != nil {
+					fmt.Printf("Error reassigning orders: %v\n", err)
+					localOrders[orderToConfirm.Floor][orderToConfirm.Button] = NEW
+					allHallOrders[id] = localOrders
+					dataMutex.Unlock()
+					continue
+				}
 			}
+
 			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
+
 			dataMutex.Unlock()
 			elevio.SetButtonLamp(orderToConfirm.Button, orderToConfirm.Floor, true)
 			reassignedLocalHallOrdersCh <- hallOrdersForId
@@ -337,13 +347,14 @@ func runOrderManager(
 
 		case orderToReset := <-orderResetCh:
 			dataMutex.Lock()
-			if !availableElevators[id] {
+			localOrders := allHallOrders[id]
+			if localOrders[orderToReset.Floor][orderToReset.Button] != COMPLETED {
 				dataMutex.Unlock()
 				continue
 			}
 
 			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
-			localOrders := allHallOrders[id]
+
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
 			allHallOrders[id] = localOrders
 			dataMutex.Unlock()
@@ -387,6 +398,7 @@ func OrdersInit(id string,
 		&dataMutex)
 
 	go resetHallOrders(
+		id,
 		orderResetCh,
 		allHallOrders,
 		availableElevators,

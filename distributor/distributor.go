@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const distributorTimeout = 1000 * time.Millisecond
+const distributorTimeout = 500 * time.Millisecond
 
 var distributorExecutablePath = func() string {
 	switch runtime.GOOS {
