@@ -76,8 +76,8 @@ func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS -
     	if !exists {
         	return nil, fmt.Errorf("elevator with ID %s not found in allElevators", id)
     	}
-		var cabRequests [config.N_FLOORS]bool
 
+		var cabRequests [config.N_FLOORS]bool
 		for floor := 0; floor < config.N_FLOORS; floor++ {
 			cabRequests[floor] = elev.Requests[floor][elevio.BT_Cab]
 		}
@@ -114,9 +114,11 @@ func ParseDistributorOutput(output []byte) (map[string][config.N_FLOORS][config.
 	if err := json.Unmarshal(output, &assignments); err != nil {
 		return nil, fmt.Errorf("unmarshal distributor output: %w", err)
 	}
+
 	if assignments == nil {
 		return nil, fmt.Errorf("distributor output was empty")
 	}
+
 	return assignments, nil
 }
 
@@ -130,5 +132,6 @@ func HallOrdersForID(output []byte, id string) ([config.N_FLOORS][config.N_BUTTO
 	if !exists {
 		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("missing assignments for id %s", id)
 	}
+
 	return hallOrders, nil
 }
