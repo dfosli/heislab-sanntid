@@ -24,6 +24,7 @@ func OnRequestButtonPress(
 	switch elev.State {
 	case elev_struct.DoorOpen:
 		if requests.RequestsShouldClearImmediately(elev, btnFloor, btnType) {
+			elev.Requests[btnFloor][btnType] = false
 			completedOrderCh <- elevio.ButtonEvent{Floor: btnFloor, Button: btnType}
 			doorTimer.Reset(DOOR_OPEN_TIME)
 			stuckTimer.Reset(STALL_TIME)

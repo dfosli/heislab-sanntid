@@ -115,7 +115,7 @@ func RunElevator(
 		case <-stuckTimer.C:
 			if elevator.State != elev_struct.Idle {
 				elevator.Stuck = true
-				elevator = elev_struct.ClearLocalHallOrders(elevator)
+				elevator = elev_struct.ClearLocalHallRequests(elevator)
 				log.Printf("stuck timer expired")
 			}
 
