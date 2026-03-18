@@ -278,7 +278,6 @@ func RunOrderManager(
 						allElevators[peer] = elev_struct.ElevatorInit(peer)
 					} else if !availableElevators[peer] {
 						availableElevators[peer] = true
-						allHallOrders[id] = rollbackHallOrders(allHallOrders[id])
 					}
 				}
 			}
@@ -366,6 +365,8 @@ func RunOrderManager(
 
 			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
 			if err != nil {
+				localOrders[orderToConfirm.Floor][orderToConfirm.Button] = NEW
+				allHallOrders[id] = localOrders
 				dataMutex.Unlock()
 				continue
 			}
@@ -378,9 +379,7 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 			elevio.SetButtonLamp(orderToConfirm.Button, orderToConfirm.Floor, true)
-
 			reassignedHallOrdersCh <- hallOrdersForId
-
 			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, cabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
 
 		case orderToReset := <-orderResetCh:
@@ -389,9 +388,15 @@ func RunOrderManager(
 			localOrders := allHallOrders[id]
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
 			allHallOrders[id] = localOrders
+
+			elevatorSnapshot := allElevators[id]
+			hallOrdersSnapshot := allHallOrders[id]
+			cabOrdersSnapshot := maps.Clone(allCabOrders)
+
 			dataMutex.Unlock()
 
 			elevio.SetButtonLamp(orderToReset.Button, orderToReset.Floor, false)
+			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, cabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
 
 		case <-networkResendTicker.C:
 			dataMutex.RLock()

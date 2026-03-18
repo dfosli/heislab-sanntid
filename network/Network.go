@@ -24,7 +24,7 @@ var (
 func NetworkInit(id string) {
 
 	peerUpdateCh = make(chan peers.PeerUpdate, config.BUFFER_SIZE)
-	peerTxEnable = make(chan bool)
+	peerTxEnable = make(chan bool, 1)
 
 	go peers.Transmitter(15647, id, peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
