@@ -26,18 +26,6 @@ const (
 	COMPLETED = types.COMPLETED
 )
 
-func initAllElevators(id string) AllElevators {
-	allElevators := make(AllElevators)
-	allElevators[id] = elev_struct.ElevatorInit(id)
-	return allElevators
-}
-
-func initCabOrdersAllElevators(id string) AllCabOrders {
-	allCabOrders := make(AllCabOrders)
-	allCabOrders[id] = elev_struct.GetCabOrders(elev_struct.ElevatorInit(id))
-	return allCabOrders
-}
-
 func setAllOrders(orderState OrderState) HallOrders {
 	var hallOrders HallOrders
 	for floor := 0; floor < config.N_FLOORS; floor++ {
@@ -433,12 +421,17 @@ func OrdersInit(id string,
 	completedOrderCh <-chan elevio.ButtonEvent,
 	localElevatorCh <-chan types.Elevator) {
 
-	allHallOrders := AllHallOrders{id: setAllOrders(NONE)}
+	allHallOrders := make(AllHallOrders)
+	allHallOrders[id] = setAllOrders(NONE)
 
-	allElevators := initAllElevators(id)
-	allCabOrders := initCabOrdersAllElevators(id)
+	allElevators := make(AllElevators)
+	allElevators[id] = elev_struct.ElevatorInit(id)
+
+	allCabOrders := make(AllCabOrders)
+	allCabOrders[id] = elev_struct.GetCabOrders(allElevators[id])
 
 	availableElevators := map[string]bool{id: true}
+
 	var dataMutex sync.RWMutex
 
 	orderConfirmedCh := make(chan elevio.ButtonEvent, config.BUFFER_SIZE)
