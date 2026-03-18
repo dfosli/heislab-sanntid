@@ -356,13 +356,17 @@ func RunOrderManager(
 			}
 
 		case orderToConfirm := <-orderConfirmedCh:
-			fmt.Printf("ConfirmedCh case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
-			dataMutex.Lock()
+			if !availableElevators[id] {
+				continue
+			}
 
+			fmt.Printf("ConfirmedCh case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
+			
+			dataMutex.Lock()
 			localOrders := allHallOrders[id]
 			localOrders[orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
 			allHallOrders[id] = localOrders
-
+			
 			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
 			if err != nil {
 				localOrders[orderToConfirm.Floor][orderToConfirm.Button] = NEW
@@ -383,7 +387,12 @@ func RunOrderManager(
 			network.NetworkSend(elevatorSnapshot, hallOrdersSnapshot, cabOrdersSnapshot, time.Now().Before(cabOrderRecoveryDeadline))
 
 		case orderToReset := <-orderResetCh:
+			if !availableElevators[id] {
+				continue
+			}
+
 			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
+
 			dataMutex.Lock()
 			localOrders := allHallOrders[id]
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
