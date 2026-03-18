@@ -207,7 +207,7 @@ func applyRemoteElevatorUpdate(
 
 	mergeCabOrders(allCabOrders, remoteElevatorMsg.AllCabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.CabOrdersRecovering)
 
-	if !availableElevators[remoteElevatorMsg.Elevator.ID] {
+	if !availableElevators[remoteElevatorMsg.Elevator.ID] && !remoteElevatorMsg.Elevator.Stuck {
 		return
 	}
 
@@ -344,7 +344,6 @@ func runOrderManager(
 
 			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
 
-			dataMutex.Lock()
 			localOrders := allHallOrders[id]
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
 			allHallOrders[id] = localOrders
