@@ -115,7 +115,7 @@ func recoverLocalCabOrders(localID string, allCabOrders types.AllCabOrders, allE
 		recoveredOrders[floor] = true
 	}
 
-	// allElevators[localID] = localElevator
+	allElevators[localID] = localElevator
 	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
 
 	return recoveredOrders
