@@ -320,6 +320,7 @@ func runOrderManager(
 			localOrders := allHallOrders[id]
 			localOrders[orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
 			allHallOrders[id] = localOrders
+
 			hallOrdersForId, err := ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
 			if err != nil {
 				fmt.Printf("Error reassigning orders: %v\n", err)
@@ -342,6 +343,7 @@ func runOrderManager(
 			}
 
 			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
+
 			dataMutex.Lock()
 			localOrders := allHallOrders[id]
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
