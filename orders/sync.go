@@ -29,7 +29,6 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 			}
 		}
 	}
-
 	return localHallOrders
 }
 
