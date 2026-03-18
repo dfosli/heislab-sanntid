@@ -55,23 +55,6 @@ func directionToString(elevator types.Elevator) string {
 }
 
 func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS - 1]bool, availableElevators map[string]bool, allElevators types.AllElevators) ([]byte, error) {
-
-	/* input format for distributor looks like this:
-		{
-	    "hallRequests" :
-	        [[Boolean, Boolean], ...],
-	    "states" :
-	        {
-	            "id_1" : {
-	                "state"     : < "idle" | "moving" | "doorOpen" >
-	                "floor"         : NonNegativeInteger
-	                "direction"     : < "up" | "down" | "stop" >
-	                "cabRequests"   : [Boolean, ...]
-	            },
-	            "id_2" : {...}
-	        }
-		}
-	*/
 	type StateInputForDistributor struct {
 		State       string                `json:"state"`
 		Floor       int                   `json:"floor"`
