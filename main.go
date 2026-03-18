@@ -54,20 +54,21 @@ func main() {
 
 	id, port := parseFlags()
 
-	elevOutCh, reassignedOrdersCh, recoveredCabOrdersCh, completedOrderCh := initChannels()
+	elevOutCh, reassignLocalHallOrdersCh, recoveredCabOrdersCh, completedOrderCh := initChannels()
 
 	network.NetworkInit(id)
 
 	elevator.ElevatorInit(
 		id,
 		port,
-		reassignedOrdersCh,
+		reassignLocalHallOrdersCh,
 		recoveredCabOrdersCh,
 		completedOrderCh,
 		elevOutCh)
 
-	orders.OrdersInit(id,
-		reassignedOrdersCh,
+	orders.OrdersInit(
+		id,
+		reassignLocalHallOrdersCh,
 		recoveredCabOrdersCh,
 		completedOrderCh,
 		elevOutCh)
