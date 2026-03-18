@@ -339,6 +339,10 @@ func runOrderManager(
 			sendNetworkUpdate()
 
 		case orderToConfirm := <-orderConfirmedCh:
+			if !availableElevators[id] {
+				continue
+			}
+
 			fmt.Printf("ConfirmedCh case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
 			dataMutex.Lock()
 			localOrders := allHallOrders[id]
@@ -359,6 +363,10 @@ func runOrderManager(
 			sendNetworkUpdate()
 
 		case orderToReset := <-orderResetCh:
+			if !availableElevators[id] {
+				continue
+			}
+
 			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
 			dataMutex.Lock()
 			localOrders := allHallOrders[id]
