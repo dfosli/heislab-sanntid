@@ -339,6 +339,9 @@ func runOrderManager(
 			sendNetworkUpdate()
 
 		case orderToConfirm := <-orderConfirmedCh:
+			if !availableElevators[id] {
+				continue
+			}
 
 			fmt.Printf("ConfirmedCh case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
 			dataMutex.Lock()
