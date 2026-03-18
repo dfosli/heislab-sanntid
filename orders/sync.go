@@ -114,3 +114,32 @@ func recoverLocalCabOrders(localID string, allCabOrders types.AllCabOrders, allE
 
 	return recoveredOrders
 }
+
+func rollbackHallOrders(hallOrders HallOrders) HallOrders {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if hallOrders[floor][btn] == ASSIGNED || hallOrders[floor][btn] == CONFIRMED {
+				hallOrders[floor][btn] = NEW
+			}
+		}
+	}
+	return hallOrders
+}
+
+func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders HallOrders) HallOrders {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if assignedOrders[floor][btn] {
+				hallOrders[floor][btn] = ASSIGNED
+			}
+		}
+	}
+	return hallOrders
+}
+
+func handleElevatorUnavailable(localID string, unavailableID string, allHallOrders AllHallOrders) {
+	allHallOrders[unavailableID] = setAllOrders(NONE)
+	if localID != unavailableID {
+		allHallOrders[localID] = rollbackHallOrders(allHallOrders[localID])
+	}
+}

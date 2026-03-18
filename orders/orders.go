@@ -168,35 +168,6 @@ func resetHallOrders(
 	}
 }
 
-func rollbackHallOrders(hallOrders HallOrders) HallOrders {
-	for floor := 0; floor < config.N_FLOORS; floor++ {
-		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			if hallOrders[floor][btn] == ASSIGNED || hallOrders[floor][btn] == CONFIRMED {
-				hallOrders[floor][btn] = NEW
-			}
-		}
-	}
-	return hallOrders
-}
-
-func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders HallOrders) HallOrders {
-	for floor := 0; floor < config.N_FLOORS; floor++ {
-		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			if assignedOrders[floor][btn] {
-				hallOrders[floor][btn] = ASSIGNED
-			}
-		}
-	}
-	return hallOrders
-}
-
-func handleElevatorUnavailable(localID string, unavailableID string, allHallOrders AllHallOrders) {
-	allHallOrders[unavailableID] = setAllOrders(NONE)
-	if localID != unavailableID {
-		allHallOrders[localID] = rollbackHallOrders(allHallOrders[localID])
-	}
-}
-
 func applyLocalElevatorUpdate(
 	localID string,
 	localElevator elev_struct.Elevator,
@@ -339,12 +310,13 @@ func runOrderManager(
 			sendNetworkUpdate()
 
 		case orderToConfirm := <-orderConfirmedCh:
+			dataMutex.Lock()
 			if !availableElevators[id] {
+				dataMutex.Unlock()
 				continue
 			}
 
 			fmt.Printf("ConfirmedCh case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
-			dataMutex.Lock()
 			localOrders := allHallOrders[id]
 			localOrders[orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
 			allHallOrders[id] = localOrders
@@ -363,7 +335,9 @@ func runOrderManager(
 			sendNetworkUpdate()
 
 		case orderToReset := <-orderResetCh:
+			dataMutex.Lock()
 			if !availableElevators[id] {
+				dataMutex.Unlock()
 				continue
 			}
 
