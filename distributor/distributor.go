@@ -16,13 +16,16 @@ import (
 )
 
 const distributorTimeout = 1000 * time.Millisecond
-const distributorExecutableBase = "./distributor/hall_request_assigner"
 
 var distributorExecutablePath = func() string {
-	if runtime.GOOS == "windows" {
-		return distributorExecutableBase + ".exe"
+	switch runtime.GOOS {
+	case "linux":
+		return "./distributor/hall_request_assigner"
+	case "windows":
+		return "./distributor/hall_request_assigner.exe"
+	default:
+		panic(fmt.Sprintf("unsupported OS: %s", runtime.GOOS))
 	}
-	return distributorExecutableBase
 }()
 
 func CallDistributor(jsonData []byte) ([]byte, error) {
