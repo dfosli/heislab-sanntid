@@ -3,36 +3,35 @@ package distributor
 import (
 	elevio "Driver-go"
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/types"
 	"os/exec"
+	"time"
 )
 
-func CallDistributor(input any) ([]byte, error) {
-	var jsonData []byte
-	switch v := input.(type) {
-	case []byte:
-		jsonData = v
-	case json.RawMessage:
-		jsonData = v
-	default:
-		var err error
-		jsonData, err = json.Marshal(input)
-		if err != nil {
-			return nil, fmt.Errorf("marshal error: %w", err)
-		}
-	}
+const distributorTimeout = 500 * time.Millisecond
+const distributorExecutable = "./distributor/hall_request_assigner.exe"
 
-	cmd := exec.Command("./distributor/hall_request_assigner.exe")
-	cmd.Stdin = bytes.NewReader(append(jsonData, '\n'))
+func CallDistributor(jsonData []byte) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), distributorTimeout)
+    defer cancel()
+
+	cmd := exec.CommandContext(ctx, distributorExecutable)
+	payload := append(append([]byte{}, jsonData...), '\n')
+	cmd.Stdin = bytes.NewReader(payload)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("distributor error: %w\nOutput: %s", err, string(output))
-	}
+		 if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+            return nil, fmt.Errorf("distributor timed out after %s", distributorTimeout)
+        }
+        return nil, fmt.Errorf("distributor error: %w\nOutput: %s", err, string(output))
+    }
 
 	return output, nil
 }
@@ -69,21 +68,28 @@ func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS -
 	states := make(map[string]StateInputForDistributor, len(availableElevators))
 
 	for id, isActive := range availableElevators {
-		var cabRequests [config.N_FLOORS]bool
 		if !isActive {
 			continue
 		}
-		for floor := 0; floor < elev_struct.N_FLOORS; floor++ {
-			cabRequests[floor] = allElevators[id].Requests[floor][elevio.BT_Cab]
+
+		elev, exists := allElevators[id]
+    	if !exists {
+        	return nil, fmt.Errorf("elevator with ID %s not found in allElevators", id)
+    	}
+		var cabRequests [config.N_FLOORS]bool
+
+		for floor := 0; floor < config.N_FLOORS; floor++ {
+			cabRequests[floor] = elev.Requests[floor][elevio.BT_Cab]
 		}
-		floor := allElevators[id].Floor
+		floor := elev.Floor
 		if floor < 0 {
 			floor = 0
 		}
+
 		states[id] = StateInputForDistributor{
-			State:       stateToString(allElevators[id]),
+			State:       stateToString(elev),
 			Floor:       floor,
-			Direction:   directionToString(allElevators[id]),
+			Direction:   directionToString(elev),
 			CabRequests: cabRequests,
 		}
 	}
@@ -95,10 +101,6 @@ func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS -
 		HallRequests: hallRequests,
 		States:       states,
 	}
-
-	// debugData, _ := json.MarshalIndent(fullInput, "", "  ")
-	// fmt.Println(string(debugData))
-
 	data, err := json.Marshal(fullInput)
 	if err != nil {
 		return nil, fmt.Errorf("marshal error: %w", err)
