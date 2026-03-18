@@ -22,14 +22,13 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {
 					continue
 				}
-				if localHallOrders[floor][btn] == NEW && remoteHallOrders[floor][btn] >= CONFIRMED {
+				if localHallOrders[floor][btn] <= NEW && remoteHallOrders[floor][btn] >= CONFIRMED && remoteHallOrders[floor][btn] < COMPLETED {
 					continue
 				}
-				(localHallOrders)[floor][btn] = remoteHallOrders[floor][btn]
+				localHallOrders[floor][btn] = remoteHallOrders[floor][btn]
 			}
 		}
 	}
-
 	return localHallOrders
 }
 
@@ -50,7 +49,7 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [config.N_FLOORS][config.N_BU
 	for floor := 0; floor < len(hallOrders); floor++ {
 		for btn := 0; btn < len(hallOrders[floor]); btn++ {
 			state := hallOrders[floor][btn]
-			hallRequests[floor][btn] = state != NONE && state != COMPLETED
+			hallRequests[floor][btn] = state == CONFIRMED || state == ASSIGNED
 		}
 	}
 	return hallRequests
