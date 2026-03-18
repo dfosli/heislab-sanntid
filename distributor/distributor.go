@@ -18,18 +18,18 @@ import (
 const distributorTimeout = 1000 * time.Millisecond
 const distributorExecutableBase = "./distributor/hall_request_assigner"
 
-func distributorExecutable() string {
+var distributorExecutablePath = func() string {
 	if runtime.GOOS == "windows" {
 		return distributorExecutableBase + ".exe"
 	}
 	return distributorExecutableBase
-}
+}()
 
 func CallDistributor(jsonData []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), distributorTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, distributorExecutable())
+	cmd := exec.CommandContext(ctx, distributorExecutablePath)
 	payload := append(append([]byte{}, jsonData...), '\n')
 	cmd.Stdin = bytes.NewReader(payload)
 
