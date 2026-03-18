@@ -104,7 +104,6 @@ func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS -
 		return nil, fmt.Errorf("marshal error: %w", err)
 	}
 
-
 	return data, nil
 }
 
