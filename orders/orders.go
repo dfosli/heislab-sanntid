@@ -171,10 +171,10 @@ func resetHallOrders(
 func applyLocalElevatorUpdate(
 	localID string,
 	localElevator elev_struct.Elevator,
+	availableElevators map[string]bool,
 	allHallOrders AllHallOrders,
 	allElevators types.AllElevators,
-	allCabOrders types.AllCabOrders,
-	availableElevators map[string]bool) {
+	allCabOrders types.AllCabOrders) {
 
 	allElevators[localID] = localElevator
 	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
@@ -220,7 +220,7 @@ func runOrderManager(
 	id string,
 	localElevatorCh <-chan types.Elevator,
 	completedOrderCh <-chan elevio.ButtonEvent,
-	reassignedHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool,
+	reassignedLocalHallOrdersCh chan<- [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	recoveredCabOrdersCh chan<- [config.N_FLOORS]bool,
 	orderConfirmedCh <-chan elevio.ButtonEvent,
 	orderResetCh <-chan elevio.ButtonEvent,
@@ -274,7 +274,7 @@ func runOrderManager(
 
 		case localElevator := <-localElevatorCh:
 			dataMutex.Lock()
-			applyLocalElevatorUpdate(id, localElevator, allHallOrders, allElevators, allCabOrders, availableElevators)
+			applyLocalElevatorUpdate(id, localElevator, availableElevators, allHallOrders, allElevators, allCabOrders)
 			dataMutex.Unlock()
 			sendNetworkUpdate()
 
@@ -332,7 +332,7 @@ func runOrderManager(
 			allHallOrders[id] = setOrdersToAssigned(hallOrdersForId, allHallOrders[id])
 			dataMutex.Unlock()
 			elevio.SetButtonLamp(orderToConfirm.Button, orderToConfirm.Floor, true)
-			reassignedHallOrdersCh <- hallOrdersForId
+			reassignedLocalHallOrdersCh <- hallOrdersForId
 			sendNetworkUpdate()
 
 		case orderToReset := <-orderResetCh:
@@ -343,12 +343,11 @@ func runOrderManager(
 			}
 
 			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
-
-			dataMutex.Lock()
 			localOrders := allHallOrders[id]
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
 			allHallOrders[id] = localOrders
 			dataMutex.Unlock()
+
 			elevio.SetButtonLamp(orderToReset.Button, orderToReset.Floor, false)
 			sendNetworkUpdate()
 

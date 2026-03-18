@@ -134,7 +134,7 @@ func RunElevator(
 func ElevatorInit(
 	id string,
 	port string,
-	reassignedOrders <-chan [N_FLOORS][N_BUTTONS - 1]bool,
+	reassignLocalHallOrdersCh <-chan [N_FLOORS][N_BUTTONS - 1]bool,
 	recoveredCabOrders <-chan [N_FLOORS]bool,
 	completedOrder chan<- elevio.ButtonEvent,
 	elevOut chan<- elev_struct.Elevator) {
@@ -162,5 +162,5 @@ func ElevatorInit(
 	go elevio.PollFloorSensor(drvFloors)
 	go elevio.PollObstructionSwitch(drvObstr)
 
-	go RunElevator(id, drvButtons, drvFloors, drvObstr, reassignedOrders, recoveredCabOrders, completedOrder, elevOut)
+	go RunElevator(id, drvButtons, drvFloors, drvObstr, reassignLocalHallOrdersCh, recoveredCabOrders, completedOrder, elevOut)
 }
