@@ -9,12 +9,6 @@ import (
 	types "heislab-sanntid/types"
 )
 
-// func updateLocalHallOrders(hallOrders *HallOrders, floor int, btn int, orderState OrderState) bool {
-// 	(*hallOrders)[floor][btn] = orderState
-// 	return true //!TODO add some errorhandling here
-// }
-// Nuked this func since it is useless. DB.
-
 func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
@@ -115,7 +109,7 @@ func recoverLocalCabOrders(localID string, allCabOrders types.AllCabOrders, allE
 		recoveredOrders[floor] = true
 	}
 
-	// allElevators[localID] = localElevator
+	allElevators[localID] = localElevator
 	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
 
 	return recoveredOrders

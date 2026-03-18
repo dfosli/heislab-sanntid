@@ -11,27 +11,35 @@ import (
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/types"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
 const distributorTimeout = 1000 * time.Millisecond
-const distributorExecutable = "./distributor/hall_request_assigner.exe"
+const distributorExecutableBase = "./distributor/hall_request_assigner"
+
+var distributorExecutablePath = func() string {
+	if runtime.GOOS == "windows" {
+		return distributorExecutableBase + ".exe"
+	}
+	return distributorExecutableBase
+}()
 
 func CallDistributor(jsonData []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), distributorTimeout)
-    defer cancel()
+	defer cancel()
 
-	cmd := exec.CommandContext(ctx, distributorExecutable)
+	cmd := exec.CommandContext(ctx, distributorExecutablePath)
 	payload := append(append([]byte{}, jsonData...), '\n')
 	cmd.Stdin = bytes.NewReader(payload)
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		 if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-            return nil, fmt.Errorf("distributor timed out after %s", distributorTimeout)
-        }
-        return nil, fmt.Errorf("distributor error: %w\nOutput: %s", err, string(output))
-    }
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, fmt.Errorf("distributor timed out after %s", distributorTimeout)
+		}
+		return nil, fmt.Errorf("distributor error: %w\nOutput: %s", err, string(output))
+	}
 
 	return output, nil
 }
@@ -73,9 +81,9 @@ func FormatInputForDistributor(hallRequests [config.N_FLOORS][config.N_BUTTONS -
 		}
 
 		elev, exists := allElevators[id]
-    	if !exists {
-        	return nil, fmt.Errorf("elevator with ID %s not found in allElevators", id)
-    	}
+		if !exists {
+			return nil, fmt.Errorf("elevator with ID %s not found in allElevators", id)
+		}
 
 		var cabRequests [config.N_FLOORS]bool
 		for floor := 0; floor < config.N_FLOORS; floor++ {
