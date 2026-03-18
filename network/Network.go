@@ -26,12 +26,12 @@ func NetworkInit(id string) {
 	peerUpdateCh = make(chan peers.PeerUpdate, config.BUFFER_SIZE)
 	peerTxEnable = make(chan bool, 1)
 
-	go peers.Transmitter(15647, id, peerTxEnable)
-	go peers.Receiver(15647, peerUpdateCh)
+	go peers.Transmitter(27023, id, peerTxEnable)
+	go peers.Receiver(27023, peerUpdateCh)
 	networkTx = make(chan NetworkMsg, config.BUFFER_SIZE)
 	networkRx = make(chan NetworkMsg, config.BUFFER_SIZE)
-	go bcast.Transmitter(16569, networkTx)
-	go bcast.Receiver(16569, networkRx)
+	go bcast.Transmitter(23879, networkTx)
+	go bcast.Receiver(23879, networkRx)
 }
 
 func NetworkSend(elevator types.Elevator, hallOrders types.HallOrders, cabOrders types.AllCabOrders, recovering bool) {
