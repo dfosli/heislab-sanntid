@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const distributorTimeout = 500 * time.Millisecond
+const distributorTimeout = 1000 * time.Millisecond
 const distributorExecutable = "./distributor/hall_request_assigner.exe"
 
 func CallDistributor(jsonData []byte) ([]byte, error) {
