@@ -38,7 +38,7 @@ func setAllOrders(orderState OrderState) HallOrders {
 
 func confirmHallOrders(
 	localID string,
-	order_confirmed_chan chan<- elevio.ButtonEvent,
+	orderConfirmedCh chan<- elevio.ButtonEvent,
 	allHallOrders AllHallOrders,
 	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
@@ -99,13 +99,13 @@ func confirmHallOrders(
 		dataMutex.RUnlock()
 
 		for _, event := range ordersToConfirm {
-			order_confirmed_chan <- event
+			orderConfirmedCh <- event
 		}
 	}
 }
 
 func resetHallOrders(
-	order_reset_chan chan<- elevio.ButtonEvent,
+	orderResetCh chan<- elevio.ButtonEvent,
 	allHallOrders AllHallOrders,
 	availableElevators map[string]bool,
 	dataMutex *sync.RWMutex) {
@@ -163,7 +163,7 @@ func resetHallOrders(
 		dataMutex.RUnlock()
 
 		for _, event := range ordersToReset {
-			order_reset_chan <- event
+			orderResetCh <- event
 		}
 	}
 }
@@ -189,7 +189,6 @@ func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]b
 	}
 	return hallOrders
 }
-
 
 func handleElevatorUnavailable(localID string, unavailableID string, allHallOrders AllHallOrders) {
 	allHallOrders[unavailableID] = setAllOrders(NONE)
@@ -247,7 +246,7 @@ func applyRemoteElevatorUpdate(
 	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
 }
 
-func RunOrderManager(
+func runOrderManager(
 	id string,
 	localElevatorCh <-chan types.Elevator,
 	completedOrderCh <-chan elevio.ButtonEvent,
@@ -294,7 +293,6 @@ func RunOrderManager(
 			dataMutex.Unlock()
 
 		case localElevator := <-localElevatorCh:
-			// fmt.Println("localElevator case\n")
 			dataMutex.Lock()
 			elevatorSnapshot, hallOrdersSnapshot := applyLocalElevatorUpdate(id, localElevator, allHallOrders, allElevators, allCabOrders, availableElevators)
 			recoveringCabOrders := time.Now().Before(cabOrderRecoveryDeadline)
@@ -446,7 +444,7 @@ func OrdersInit(id string,
 		availableElevators,
 		&dataMutex)
 
-	go RunOrderManager(
+	go runOrderManager(
 		id,
 		localElevatorCh,
 		completedOrderCh,
