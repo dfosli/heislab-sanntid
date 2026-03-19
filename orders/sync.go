@@ -2,14 +2,16 @@ package orders
 
 import (
 	elevio "Driver-go"
-	types "heislab-sanntid/types"
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
 	"heislab-sanntid/elevator/elev_struct"
+	"heislab-sanntid/network"
+	types "heislab-sanntid/types"
+
 	"fmt"
 )
 
-func SyncLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
+func syncLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
@@ -192,5 +194,5 @@ func applyRemoteElevatorUpdate(
 
 	allElevators[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.Elevator
 	allHallOrders[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.HallOrders
-	allHallOrders[localID] = updateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
+	allHallOrders[localID] = syncLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
 }
