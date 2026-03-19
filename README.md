@@ -75,7 +75,7 @@ Wraps an external executable (`hall_request_assigner`) that computes optimal ord
 3. Network broadcasts current state to all peers
 4. All peers sync to **NEW**, `confirmHallOrders` goroutine signals to `runOrderManager`, which marks order as **CONFIRMED**
 5. `ReassignOrders` calls the external distributor executable, and orders assigned to itself are sent via `reassignLocalHallOrdersCh` to `RunElevator`. Order is marked as **ASSIGNED**.
-6. Elevator services the order and reaches the target floor, `completedOrderCh` -> `runOrderManager`, marks order **COMPLETED**.
+6. Designated elevator services the order and reaches the target floor, `completedOrderCh` -> `runOrderManager`, marks order **COMPLETED**.
 7. All peers sync to **COMPLETED**, `resetHallOrders` signals, `runOrderManager` resets order to **NONE**.
 
 ### Fault Handling
