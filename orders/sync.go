@@ -16,7 +16,11 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] == COMPLETED {
 					continue
 				}
-				if localHallOrders[floor][btn] <= NEW && remoteHallOrders[floor][btn] >= CONFIRMED && remoteHallOrders[floor][btn] < COMPLETED {
+				if localHallOrders[floor][btn] == NONE && remoteHallOrders[floor][btn] >= CONFIRMED && remoteHallOrders[floor][btn] < COMPLETED {
+					localHallOrders[floor][btn] = NEW
+					continue
+				}
+				if localHallOrders[floor][btn] == NEW && remoteHallOrders[floor][btn] >= CONFIRMED && remoteHallOrders[floor][btn] < COMPLETED {
 					continue
 				}
 				localHallOrders[floor][btn] = remoteHallOrders[floor][btn]
