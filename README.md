@@ -1,100 +1,100 @@
-Elevator Project
-================
+# TTK4145 Elevator Project
 
-Create software for controlling `n` elevators working in parallel across `m` floors.
+## Project Overview
 
-Be reasonable: There may be semantic hoops that you can jump through to create something that is "technically correct". Do not hesitate to contact us if you feel that something is ambiguous or missing from these requirements.
+A distributed real-time elevator control system written in Go. Uses a peer-to-peer design, where elevators communicate over UDP to sync orders and coordinate assignment, handle failures, and recover state. Each node runs an identical program and discovers peers automatically.
 
-Main requirements
------------------
+---
 
-### The button lights are a service guarantee
- - Once the light on a hall call button (buttons for calling an elevator to that floor; top 6 buttons on the control panel) is turned on, an elevator should arrive at that floor
- - Similarly for a cab call (for telling the elevator what floor you want to exit at; front 4 buttons on the control panel), but only the elevator at that specific workspace should take the order
+## Modules
 
-### No calls are lost
- - Failure states are anything that prevents the elevator from communicating with other elevators or servicing calls
-   - This includes losing network connection entirely, software that crashes, doors that won't close, and losing power - both to the elevator motor and the machine that controls the elevator
-   - Network packet loss is not a failure, and can occur at any time
-   - An elevator entering the network is not a failure
- - No calls should be lost in the presence of failures
-   - For cab calls, handling loss of power or software crash implies that the calls are executed once service to that elevator is restored
-   - The time used to handle (compensate for) these failures should be reasonable, i.e. on the order of magnitude of seconds (not minutes)
- - If the elevator is disconnected from the network, it should still serve all the currently active calls (i.e. whatever lights are showing)
-   - It should also keep taking new cab calls so that people can exit the elevator even if it is disconnected from the network
-   - The elevator software should not require reinitialization (manual restart) after intermittent network or motor power loss
+### `config`
+Defines system-wide constants.
 
-### The lights and buttons should function as expected
- - The hall call buttons on all workspaces should let you summon an elevator
- - Under normal circumstances, the lights on the hall buttons should show the same thing on all workspaces
-   - Normal circumstances mean when there are no active failures and no packet loss
-   - Under circumstances with packet loss, at least one light must work as expected
- - The cab button lights should not be shared between workspaces
- - The cab and hall button lights should turn on as soon as is reasonable after the button has been pressed
-   - Not ever turning on the button lights because "no guarantee is offered" is not a valid solution
-   - You are allowed to expect the user to press the button again if it does not light up
- - The cab and hall button lights should turn off when the corresponding call has been serviced
+### `types`
+Shared types and the `OrderState` enum used across packages:
+- **NONE** -> **NEW** -> **CONFIRMED** -> **ASSIGNED** -> **COMPLETED** -> **NONE**
 
-### The door should function as expected
- - The "door open" lamp should be used as a substitute for an actual door
-   - The door should not be open (light switched on) while the elevator is moving
-   - The duration for keeping the door open when stopping at a floor should be 3 (three) seconds
- - The obstruction switch should substitute the door obstruction sensor inside the elevator
-   - The door should not close while it is obstructed
-   - The obstruction can trigger (and un-trigger) at any time
+### `elevator`
+Manages the local elevator hardware and behavior.
 
-### An individual elevator should behave sensibly and efficiently
- - No stopping at every floor "just to be safe"
- - Clearing a hall call button light is assumed to mean that the elevator that arrived at that floor announces "going up" or "going down" to the user (for up and down buttons respectively), and users are assumed to only enter an elevator moving in the direction they have requested
-   - This means that a single elevator arriving at a floor should *not* clear both up and down calls simultaneously
-   - If the elevator has no reason to travel in the direction it has announced (e.g. both up and down are requested, but the people entering the elevator all want to go down), the elevator should "announce" that it is changing direction by first clearing the call in the opposite direction, then keeping the door open for another 3 seconds
+- **`elevio`**: Hardware abstraction layer (driver). Opens a TCP connection to the elevator simulator and exposes functions for motor, lamps, and sensors. Polling goroutines push hardware events onto channels.
+- **`elev_struct`**: Defines the `Elevator` struct, containing elevator state and helper functions.
+- **`state_machine`**: Implements the elevator FSM with handlers for button presses, floor arrivals, door timeouts, and obstruction events.
+- **`requests`**: Algorithms that determine elevator direction, whether to stop at a floor, and how to clear completed requests.
 
-Secondary requirements
-----------------------
+### `network`
+Handles all communication over UDP.
 
-*These requirements will only be regarded if the system satisfies the main requirements.*
+- **`Network.go`**: Public interface. Defines the `NetworkMsg` struct, and exposes `NetworkInit`, `NetworkSend`, `NetworkRxChan`, `Peers`, and `SetPeerTxEnable`.
+- **`bcast`**: Broadcasts and receives JSON-encoded messages on port 23879.
+- **`peers`**: Heartbeat protocol on port 27023. Nodes broadcast their ID every 15ms. A node is considered lost after 500ms of silence. Produces `PeerUpdate` events (new peer, lost peers, current peers).
 
-### Calls should be served as efficiently as possible
- - The calls should be distributed across the elevators in such a way that they are serviced as soon as possible
+### `orders`
+Distributed order management with consensus-based confirmation.
 
+- **`orders.go`**: Contains central goroutine (`runOrderManager`), which handles peer updates, local and remote elevator updates, triggers order redistribution, manages stuck elevator detection, and sends network broadcasts every 100ms. Also contains two additional goroutines: `confirmHallOrders` and `resetHallOrders`. They signal orders to advance **NEW** -> **CONFIRMED** and **COMPLETED** -> **NONE** respectively, when there is consensus between elevators. These goroutines "own" these order state transitions.
+- **`sync.go`**: Algorithms for synchronizing order states from local elevator and between peers, recovering cab orders after restart, and reassigning orders from unavailable elevators.
 
-Permitted assumptions
----------------------
+### `distributor`
+Wraps an external executable (`hall_request_assigner`) that computes optimal order assignments, using a "reassign all orders on update" approach. Helper functions format system state to JSON, runs the executable, and parses the output back into per-elevator hall order assignments.
 
-The following assumptions will always be valid during testing:
- 1. There is always at least one elevator that is not in a failure state
-    - I.e. there is always at least one elevator that can serve calls
-    - "No failure" includes the door obstruction: At least one elevator will be able to close its doors
- 2. Cab call redundancy with a single elevator or a disconnected elevator is not required
-    - Given assumption **1**, a system containing only one elevator is assumed to be unable to fail
-    - In a system containing more than one elevator, a disconnected elevator will not have more failures
- 3. No network partitioning: There will never be a situation where there are multiple sets of two or more elevators with no connection between them
-    - Note that this needs 4 or more elevators to become applicable, which we will not test anyway
+---
 
+## Program Flow
 
-Unspecified behavior
---------------------
-Some things are left intentionally unspecified. Their implementation will not be tested and are therefore up to you.
+### Startup (`main.go`)
 
-How the elevator behaves when it cannot connect to the network (router) during initialization
- - You can either enter a "single-elevator" mode or refuse to start
+- Parse CLI flags `-id` and `-port`
+- Initialize four channels:
+  - `elevOutCh` - local elevator state -> order manager
+  - `reassignLocalHallOrdersCh` - new assignments -> local elevator
+  - `recoveredCabOrdersCh` - recovered cab orders -> local elevator
+  - `completedOrderCh` - completed orders from local elevator -> order manager
+- `network.NetworkInit(id)` - start UDP broadcast and heartbeat
+- `elevator.ElevatorInit(...)` - connect to hardware, initialize floor, start FSM
+- `orders.OrdersInit(...)` - initialize order state, start goroutines
 
-How the hall (call up, call down) buttons work when the elevator is disconnected from the network
- - You can optionally refuse to take these new calls
+### Elevator Operation
 
-What the stop button does
- - The stop button functionality (if/when implemented) is up to you
+- Hardware polling goroutines run continuously:
+  - `PollButtons` - sends button press events
+  - `PollFloorSensor` - sends floor arrival events
+  - `PollObstructionSwitch` - sends obstruction events
+- `RunElevator` (FSM loop) reacts to those events:
+  - `OnRequestButtonPress` - sets request, transitions state
+  - `OnFloorArrival` - stops or continues, clears completed requests
+  - `OnDoorTimeout` - closes door, chooses next direction
+  - `OnObstruction` - extends door open timer
+- Elevator publishes its state periodically via `elevOutCh` to `runOrderManager`
 
-Recommendations
----------------
+### Order Lifecycle
 
-Start with `1 <= n <= 3` elevators, and `m == 4` floors. Try to avoid hard-coding these values: You should be able to add a fourth elevator with no extra configuration, or change the number of floors with minimal configuration. You do, however, not need to test for `n > 3` and `m != 4`.
+1. Button press detected by `RunElevator`
+2. `runOrderManager` receives elevator update via `elevOutCh`, and `AddNewLocalOrder` marks the order as **NEW**
+3. Network broadcasts current state to all peers
+4. All peers acknowledge **NEW**, `confirmHallOrders` goroutine signals, `runOrderManager` marks order as **CONFIRMED**
+5. `ReassignOrders` calls the external distributor executable, and orders assigned to itself are sent via `reassignLocalHallOrdersCh` to `RunElevator`. Order is marked as **ASSIGNED**.
+6. Elevator services the order and reaches the target floor, `completedOrderCh` -> `runOrderManager`, marks order **COMPLETED**.
+7. All peers sync to **COMPLETED**, `resetHallOrders` signals, `runOrderManager` resets order to **NONE**.
 
-If you need to specify the identifier of an elevator when it starts, we recommend that you implement the command-line switch `--id <number>`.
+### Fault Handling
 
-Additional resources
---------------------
+**Stuck elevator:**
+- `stuckTimer` expires while Moving -> elevator sets `Stuck = true` which is sent with state through `elevOutCh`.
+- `runOrderManager` detects `Stuck`:
+  - Sets `availableElevators[id] = false`
+  - Calls `SetPeerTxEnable(false)` to stop broadcasting, makes other elevators mark us as unavailable and not assign orders to us
+  - Calls `handleElevatorUnavailable` to reset its hall orders
 
-Go to [the project resources repository](https://github.com/TTK4145/Project-resources) to find more resources for doing the project. This information is not required for the project and is therefore maintained separately.
+**Peer disconnect:**
+- `peers.Receiver` detects heartbeat timeout and signals peer is lost through `PeerUpdate`
+- `runOrderManager` calls `handleElevatorUnavailable` to reassign the lost elevator's **CONFIRMED**/**ASSIGNED** orders to remaining peers
 
-See [Testing from home](/testing_from_home.md) document on how to test with unreliable networking on a single computer.
+**Cab order recovery after restart:**
+- Node restarts with `CabOrdersRecovering = true` (5-second window)
+- Peers send their stored copy of this node's cab orders via `NetworkMsg`
+- `recoverLocalCabOrders` reconstructs the cab request matrix
+- After 5 seconds the recovery window closes
+
+---
