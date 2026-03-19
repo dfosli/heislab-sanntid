@@ -5,7 +5,7 @@ import (
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/state_machine"
-	
+
 	"log"
 	"time"
 )
@@ -141,6 +141,12 @@ func ElevatorInit(
 	elevOut chan<- elev_struct.Elevator) {
 
 	elevio.Init("localhost:"+port, config.N_FLOORS)
+
+	for floor := 0; floor < N_FLOORS; floor++ {
+		for btn := 0; btn < N_BUTTONS; btn++ {
+			elevio.SetButtonLamp(elevio.ButtonType(btn), floor, false)
+		}
+	}
 
 	startFloor := elevio.GetFloor()
 	if startFloor == -1 {
