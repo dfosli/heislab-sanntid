@@ -1,10 +1,11 @@
 package elevio
 
-import "time"
-import "sync"
-import "net"
-import "fmt"
-
+import (
+	"time"
+	"sync"
+	"net"
+	"fmt"
+)
 
 
 const _pollRate = 20 * time.Millisecond

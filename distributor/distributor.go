@@ -2,14 +2,15 @@ package distributor
 
 import (
 	elevio "Driver-go"
+	types "heislab-sanntid/types"
+	"heislab-sanntid/config"
+	"heislab-sanntid/elevator/elev_struct"
+	
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"heislab-sanntid/config"
-	"heislab-sanntid/elevator/elev_struct"
-	"heislab-sanntid/types"
 	"os/exec"
 	"runtime"
 	"time"

@@ -12,14 +12,14 @@ A distributed real-time elevator control system written in Go. Uses a peer-to-pe
 Defines system-wide constants.
 
 ### `types`
-Shared types and the `OrderState` enum used across packages:
+Shared types, including the `OrderState` enum used across packages:
 - **NONE** -> **NEW** -> **CONFIRMED** -> **ASSIGNED** -> **COMPLETED** -> **NONE**
 
 ### `elevator`
 Manages the local elevator hardware and behavior.
 
 - **`elevio`**: Hardware abstraction layer (driver). Opens a TCP connection to the elevator simulator and exposes functions for motor, lamps, and sensors. Polling goroutines push hardware events onto channels.
-- **`elev_struct`**: Defines the `Elevator` struct, containing elevator state and helper functions.
+- **`elev_struct`**: Defines the `Elevator` struct containing elevator state, and helper functions.
 - **`state_machine`**: Implements the elevator FSM with handlers for button presses, floor arrivals, door timeouts, and obstruction events.
 - **`requests`**: Algorithms that determine elevator direction, whether to stop at a floor, and how to clear completed requests.
 
@@ -31,7 +31,7 @@ Handles all communication over UDP.
 - **`peers`**: Heartbeat protocol on port 27023. Nodes broadcast their ID every 15ms. A node is considered lost after 500ms of silence. Produces `PeerUpdate` events (new peer, lost peers, current peers).
 
 ### `orders`
-Distributed order management with consensus-based confirmation.
+Distributed order management and synchronization.
 
 - **`orders.go`**: Contains central goroutine (`runOrderManager`), which handles peer updates, local and remote elevator updates, triggers order redistribution, manages stuck elevator detection, and sends network broadcasts every 100ms. Also contains two additional goroutines: `confirmHallOrders` and `resetHallOrders`. They signal orders to advance **NEW** -> **CONFIRMED** and **COMPLETED** -> **NONE** respectively, when there is consensus between elevators. These goroutines "own" these order state transitions.
 - **`sync.go`**: Algorithms for synchronizing order states from local elevator and between peers, recovering cab orders after restart, and reassigning orders from unavailable elevators.
@@ -73,7 +73,7 @@ Wraps an external executable (`hall_request_assigner`) that computes optimal ord
 1. Button press detected by `RunElevator`
 2. `runOrderManager` receives elevator update via `elevOutCh`, and `AddNewLocalOrder` marks the order as **NEW**
 3. Network broadcasts current state to all peers
-4. All peers acknowledge **NEW**, `confirmHallOrders` goroutine signals, `runOrderManager` marks order as **CONFIRMED**
+4. All peers sync to **NEW**, `confirmHallOrders` goroutine signals to `runOrderManager`, which marks order as **CONFIRMED**
 5. `ReassignOrders` calls the external distributor executable, and orders assigned to itself are sent via `reassignLocalHallOrdersCh` to `RunElevator`. Order is marked as **ASSIGNED**.
 6. Elevator services the order and reaches the target floor, `completedOrderCh` -> `runOrderManager`, marks order **COMPLETED**.
 7. All peers sync to **COMPLETED**, `resetHallOrders` signals, `runOrderManager` resets order to **NONE**.
@@ -84,7 +84,7 @@ Wraps an external executable (`hall_request_assigner`) that computes optimal ord
 - `stuckTimer` expires while Moving -> elevator sets `Stuck = true` which is sent with state through `elevOutCh`.
 - `runOrderManager` detects `Stuck`:
   - Sets `availableElevators[id] = false`
-  - Calls `SetPeerTxEnable(false)` to stop broadcasting, makes other elevators mark us as unavailable and not assign orders to us
+  - Calls `SetPeerTxEnable(false)` to stop heartbeat broadcast, makes other elevators mark us as unavailable and not assign orders to us
   - Calls `handleElevatorUnavailable` to reset its hall orders
 
 **Peer disconnect:**

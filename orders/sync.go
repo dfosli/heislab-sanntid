@@ -2,11 +2,12 @@ package orders
 
 import (
 	elevio "Driver-go"
-	"fmt"
+	types "heislab-sanntid/types"
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
 	"heislab-sanntid/elevator/elev_struct"
-	types "heislab-sanntid/types"
+	
+	"fmt"
 )
 
 func SyncLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {

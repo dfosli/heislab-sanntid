@@ -1,9 +1,10 @@
 package bcast
 
 import (
+	"heislab-sanntid/network/network/conn"
+	
 	"encoding/json"
 	"fmt"
-	"heislab-sanntid/network/network/conn"
 	"net"
 	"reflect"
 )
