@@ -55,6 +55,7 @@ func stateToString(elevator types.Elevator) string {
 	}
 	return stateStrings[elevator.State]
 }
+
 func directionToString(elevator types.Elevator) string {
 	directionStrings := map[elevio.MotorDirection]string{
 		elevio.MD_Up:   "up",

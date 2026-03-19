@@ -352,7 +352,6 @@ func runOrderManager(
 				dataMutex.Unlock()
 				continue
 			}
-
 			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
 
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
