@@ -201,12 +201,12 @@ func runOrderManager(
 	for {
 		select {
 		case peerUpdate := <-network.Peers():
+			fmt.Printf("PeerUpdate, available peers: %v\n", peerUpdate.Peers)
 			dataMutex.Lock()
 			for _, peer := range peerUpdate.Peers {
 				if peer == id {
 					continue
 				}
-				fmt.Printf("PeerUpdate, available peers: %v\n", peerUpdate.Peers)
 				if _, ok := availableElevators[peer]; !ok {
 					availableElevators[peer] = true
 					allHallOrders[peer] = setAllOrders(NONE)
