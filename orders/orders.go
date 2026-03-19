@@ -169,53 +169,6 @@ func resetHallOrders(
 	}
 }
 
-func applyLocalElevatorUpdate(
-	localID string,
-	localElevator elev_struct.Elevator,
-	availableElevators map[string]bool,
-	allHallOrders AllHallOrders,
-	allElevators types.AllElevators,
-	allCabOrders types.AllCabOrders) {
-
-	allElevators[localID] = localElevator
-	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
-
-	wasAvailable := availableElevators[localElevator.ID]
-
-	if localElevator.Stuck && availableElevators[localElevator.ID] {
-		availableElevators[localElevator.ID] = false
-		handleElevatorUnavailable(localID, localElevator.ID, allHallOrders)
-	} else if !localElevator.Stuck && !availableElevators[localElevator.ID] {
-		availableElevators[localElevator.ID] = true
-	}
-
-	isAvailable := availableElevators[localElevator.ID]
-	if wasAvailable != isAvailable {
-		network.SetPeerTxEnable(isAvailable)
-	}
-
-	allHallOrders[localID] = AddNewLocalOrder(allHallOrders[localID], localElevator.Requests)
-}
-
-func applyRemoteElevatorUpdate(
-	localID string,
-	remoteElevatorMsg network.NetworkMsg,
-	availableElevators map[string]bool,
-	allHallOrders AllHallOrders,
-	allElevators types.AllElevators,
-	allCabOrders types.AllCabOrders) {
-
-	mergeCabOrders(allCabOrders, remoteElevatorMsg.AllCabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.CabOrdersRecovering)
-
-	if !availableElevators[remoteElevatorMsg.Elevator.ID] && !remoteElevatorMsg.Elevator.Stuck {
-		return
-	}
-
-	allElevators[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.Elevator
-	allHallOrders[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.HallOrders
-	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
-}
-
 func runOrderManager(
 	id string,
 	localElevatorCh <-chan types.Elevator,
@@ -328,7 +281,7 @@ func runOrderManager(
 			hallOrdersForId := [config.N_FLOORS][config.N_BUTTONS - 1]bool{}
 			if availableElevators[id] {
 				var err error = nil
-				hallOrdersForId, err = ReassignOrders(id, allHallOrders[id], availableElevators, allElevators)
+				hallOrdersForId, err = reassignOrders(id, allHallOrders[id], availableElevators, allElevators)
 				if err != nil {
 					fmt.Printf("Error reassigning orders: %v\n", err)
 					localOrders[orderToConfirm.Floor][orderToConfirm.Button] = NEW
@@ -416,5 +369,4 @@ func OrdersInit(id string,
 		allCabOrders,
 		availableElevators,
 		&dataMutex)
-
 }

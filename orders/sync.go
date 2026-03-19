@@ -6,10 +6,11 @@ import (
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
 	"heislab-sanntid/elevator/elev_struct"
+	"heislab-sanntid/network"
 	types "heislab-sanntid/types"
 )
 
-func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
+func updateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrders) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if localHallOrders[floor][btn] < remoteHallOrders[floor][btn] {
@@ -30,12 +31,54 @@ func UpdateLocalHallOrders(localHallOrders HallOrders, remoteHallOrders HallOrde
 	return localHallOrders
 }
 
-func AddNewLocalOrder(hallOrders HallOrders, requests elev_struct.Requests) HallOrders {
+func addNewLocalOrder(hallOrders HallOrders, requests elev_struct.Requests) HallOrders {
 	for floor := 0; floor < config.N_FLOORS; floor++ {
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if requests[floor][btn] && hallOrders[floor][btn] == NONE {
 				hallOrders[floor][btn] = NEW
 				fmt.Printf("New local order added, floor: %d, button: %d\n", floor, btn)
+			}
+		}
+	}
+	return hallOrders
+}
+
+func reassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevators types.AllElevators) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
+	hallRequests := hallOrdersToBoolMatrix(hallOrders)
+	formattedOrders, err := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevators)
+	if err != nil {
+		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("format input for distributor: %w", err)
+	}
+	
+	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
+	if err != nil {
+		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("call distributor: %w", err)
+	}
+	
+	hallOrderForID, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
+	if err != nil {
+		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("parse distributor output: %w", err)
+	}
+	
+	return hallOrderForID, nil
+}
+
+func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders HallOrders) HallOrders {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if assignedOrders[floor][btn] {
+				hallOrders[floor][btn] = ASSIGNED
+			}
+		}
+	}
+	return hallOrders
+}
+
+func rollbackHallOrders(hallOrders HallOrders) HallOrders {
+	for floor := 0; floor < config.N_FLOORS; floor++ {
+		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
+			if hallOrders[floor][btn] == ASSIGNED || hallOrders[floor][btn] == CONFIRMED {
+				hallOrders[floor][btn] = NEW
 			}
 		}
 	}
@@ -51,26 +94,6 @@ func hallOrdersToBoolMatrix(hallOrders HallOrders) [config.N_FLOORS][config.N_BU
 		}
 	}
 	return hallRequests
-}
-
-func ReassignOrders(id string, hallOrders HallOrders, availableElevators map[string]bool, allElevators types.AllElevators) ([config.N_FLOORS][config.N_BUTTONS - 1]bool, error) {
-	hallRequests := hallOrdersToBoolMatrix(hallOrders)
-	formattedOrders, err := distributor.FormatInputForDistributor(hallRequests, availableElevators, allElevators)
-	if err != nil {
-		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("format input for distributor: %w", err)
-	}
-
-	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
-	if err != nil {
-		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("call distributor: %w", err)
-	}
-
-	hallOrderForID, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
-	if err != nil {
-		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("parse distributor output: %w", err)
-	}
-
-	return hallOrderForID, nil
 }
 
 func hasCabOrders(cabOrders [config.N_FLOORS]bool) bool {
@@ -119,31 +142,56 @@ func recoverLocalCabOrders(localID string, allCabOrders types.AllCabOrders, allE
 	return recoveredOrders
 }
 
-func rollbackHallOrders(hallOrders HallOrders) HallOrders {
-	for floor := 0; floor < config.N_FLOORS; floor++ {
-		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			if hallOrders[floor][btn] == ASSIGNED || hallOrders[floor][btn] == CONFIRMED {
-				hallOrders[floor][btn] = NEW
-			}
-		}
-	}
-	return hallOrders
-}
-
-func setOrdersToAssigned(assignedOrders [config.N_FLOORS][config.N_BUTTONS - 1]bool, hallOrders HallOrders) HallOrders {
-	for floor := 0; floor < config.N_FLOORS; floor++ {
-		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
-			if assignedOrders[floor][btn] {
-				hallOrders[floor][btn] = ASSIGNED
-			}
-		}
-	}
-	return hallOrders
-}
-
 func handleElevatorUnavailable(localID string, unavailableID string, allHallOrders AllHallOrders) {
 	allHallOrders[unavailableID] = setAllOrders(NONE)
 	if localID != unavailableID {
 		allHallOrders[localID] = rollbackHallOrders(allHallOrders[localID])
 	}
+}
+
+func applyLocalElevatorUpdate(
+	localID string,
+	localElevator elev_struct.Elevator,
+	availableElevators map[string]bool,
+	allHallOrders AllHallOrders,
+	allElevators types.AllElevators,
+	allCabOrders types.AllCabOrders) {
+
+	allElevators[localID] = localElevator
+	allCabOrders[localID] = elev_struct.GetCabOrders(localElevator)
+
+	wasAvailable := availableElevators[localElevator.ID]
+
+	if localElevator.Stuck && availableElevators[localElevator.ID] {
+		availableElevators[localElevator.ID] = false
+		handleElevatorUnavailable(localID, localElevator.ID, allHallOrders)
+	} else if !localElevator.Stuck && !availableElevators[localElevator.ID] {
+		availableElevators[localElevator.ID] = true
+	}
+
+	isAvailable := availableElevators[localElevator.ID]
+	if wasAvailable != isAvailable {
+		network.SetPeerTxEnable(isAvailable)
+	}
+
+	allHallOrders[localID] = addNewLocalOrder(allHallOrders[localID], localElevator.Requests)
+}
+
+func applyRemoteElevatorUpdate(
+	localID string,
+	remoteElevatorMsg network.NetworkMsg,
+	availableElevators map[string]bool,
+	allHallOrders AllHallOrders,
+	allElevators types.AllElevators,
+	allCabOrders types.AllCabOrders) {
+
+	mergeCabOrders(allCabOrders, remoteElevatorMsg.AllCabOrders, remoteElevatorMsg.Elevator.ID, remoteElevatorMsg.CabOrdersRecovering)
+
+	if !availableElevators[remoteElevatorMsg.Elevator.ID] && !remoteElevatorMsg.Elevator.Stuck {
+		return
+	}
+
+	allElevators[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.Elevator
+	allHallOrders[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.HallOrders
+	allHallOrders[localID] = updateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
 }
