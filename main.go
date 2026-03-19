@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elevator"
-	network "heislab-sanntid/network"
+	"heislab-sanntid/network"
 	"heislab-sanntid/network/network/localip"
 	"heislab-sanntid/orders"
 	"heislab-sanntid/types"

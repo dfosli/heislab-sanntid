@@ -4,7 +4,7 @@ import (
 	"elevio"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	network "heislab-sanntid/network"
+	"heislab-sanntid/network"
 	"heislab-sanntid/types"
 
 	"fmt"
