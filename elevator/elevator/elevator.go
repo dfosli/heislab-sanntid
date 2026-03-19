@@ -5,6 +5,7 @@ import (
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/state_machine"
+	
 	"log"
 	"time"
 )
