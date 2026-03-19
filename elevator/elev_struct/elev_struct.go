@@ -1,7 +1,7 @@
 package elev_struct
 
 import (
-	elevio "Driver-go"
+	"elevio"
 	"heislab-sanntid/config"
 )
 

@@ -1,12 +1,12 @@
 package orders
 
 import (
-	elevio "Driver-go"
+	"elevio"
 	"heislab-sanntid/config"
 	"heislab-sanntid/distributor"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/network"
-	types "heislab-sanntid/types"
+	"heislab-sanntid/types"
 
 	"fmt"
 )
@@ -50,17 +50,17 @@ func reassignOrders(id string, hallOrders HallOrders, availableElevators map[str
 	if err != nil {
 		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("format input for distributor: %w", err)
 	}
-	
+
 	allReassignedHallOrders, err := distributor.CallDistributor(formattedOrders)
 	if err != nil {
 		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("call distributor: %w", err)
 	}
-	
+
 	hallOrderForID, err := distributor.HallOrdersForID(allReassignedHallOrders, id)
 	if err != nil {
 		return [config.N_FLOORS][config.N_BUTTONS - 1]bool{}, fmt.Errorf("parse distributor output: %w", err)
 	}
-	
+
 	return hallOrderForID, nil
 }
 

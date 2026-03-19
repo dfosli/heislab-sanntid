@@ -1,7 +1,7 @@
 package requests
 
 import (
-	elevio "Driver-go"
+	"elevio"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 )

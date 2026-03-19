@@ -1,11 +1,11 @@
 package distributor
 
 import (
-	elevio "Driver-go"
-	types "heislab-sanntid/types"
+	"elevio"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	
+	"heislab-sanntid/types"
+
 	"bytes"
 	"context"
 	"encoding/json"

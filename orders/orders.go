@@ -1,11 +1,11 @@
 package orders
 
 import (
-	elevio "Driver-go"
+	"elevio"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	network "heislab-sanntid/network"
-	types "heislab-sanntid/types"
+	"heislab-sanntid/types"
 
 	"fmt"
 	"maps"

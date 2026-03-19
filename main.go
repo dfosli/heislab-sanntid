@@ -1,7 +1,7 @@
 package main
 
 import (
-	elevio "Driver-go"
+	"elevio"
 	"flag"
 	"fmt"
 	"heislab-sanntid/config"
