@@ -85,7 +85,7 @@ func hasCabOrders(cabOrders [config.N_FLOORS]bool) bool {
 func mergeCabOrders(allCabOrders types.AllCabOrders, remoteCabOrders types.AllCabOrders, remoteID string, remoteRecovering bool) {
 	for id, cabOrders := range remoteCabOrders {
 		if remoteRecovering && id == remoteID && !hasCabOrders(cabOrders) {
-			continue //!This can theoretically cause caborder loss if a recovering elevator receives a caborder Very quickly, before it receives its caborders from other elevators.
+			continue
 		}
 		allCabOrders[id] = cabOrders
 	}
