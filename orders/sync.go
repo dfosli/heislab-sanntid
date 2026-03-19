@@ -6,7 +6,7 @@ import (
 	"heislab-sanntid/distributor"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/network"
-	types "heislab-sanntid/types"
+	"heislab-sanntid/types"
 
 	"fmt"
 )

@@ -4,7 +4,7 @@ import (
 	"elevio"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
-	types "heislab-sanntid/types"
+	"heislab-sanntid/types"
 
 	"bytes"
 	"context"
