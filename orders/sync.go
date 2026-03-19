@@ -37,7 +37,6 @@ func addNewLocalOrder(hallOrders HallOrders, requests elev_struct.Requests) Hall
 		for btn := 0; btn < config.N_BUTTONS-1; btn++ {
 			if requests[floor][btn] && hallOrders[floor][btn] == NONE {
 				hallOrders[floor][btn] = NEW
-				fmt.Printf("New local order added, floor: %d, button: %d\n", floor, btn)
 			}
 		}
 	}

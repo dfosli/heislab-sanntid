@@ -201,12 +201,12 @@ func runOrderManager(
 	for {
 		select {
 		case peerUpdate := <-network.Peers():
-			fmt.Printf("peer update case, peers: %v\n", peerUpdate.Peers)
 			dataMutex.Lock()
 			for _, peer := range peerUpdate.Peers {
 				if peer == id {
 					continue
 				}
+				fmt.Printf("PeerUpdate, available peers: %v\n", peerUpdate.Peers)
 				if _, ok := availableElevators[peer]; !ok {
 					availableElevators[peer] = true
 					allHallOrders[peer] = setAllOrders(NONE)
@@ -259,7 +259,7 @@ func runOrderManager(
 			if newCompletedOrder.Button == elevio.BT_Cab {
 				continue
 			}
-			fmt.Printf("completedOrderCh case: floor: %d, button: %d\n", newCompletedOrder.Floor, newCompletedOrder.Button)
+
 			dataMutex.Lock()
 			orders := allHallOrders[id]
 			orders[newCompletedOrder.Floor][newCompletedOrder.Button] = COMPLETED
@@ -275,7 +275,6 @@ func runOrderManager(
 				continue
 			}
 
-			fmt.Printf("ConfirmedCh case, floor: %d, button: %d\n", orderToConfirm.Floor, orderToConfirm.Button)
 			localOrders[orderToConfirm.Floor][orderToConfirm.Button] = CONFIRMED
 			allHallOrders[id] = localOrders
 
@@ -306,7 +305,6 @@ func runOrderManager(
 				dataMutex.Unlock()
 				continue
 			}
-			fmt.Printf("ResetCh case, floor: %d, button: %d\n", orderToReset.Floor, orderToReset.Button)
 
 			localOrders[orderToReset.Floor][orderToReset.Button] = NONE
 			allHallOrders[id] = localOrders
