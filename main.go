@@ -5,11 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"heislab-sanntid/config"
-	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/elevator"
 	network "heislab-sanntid/network"
 	"heislab-sanntid/network/network/localip"
 	"heislab-sanntid/orders"
+	"heislab-sanntid/types"
 	"os"
 )
 
@@ -39,12 +39,12 @@ func parseFlags() (string, string) {
 }
 
 func initChannels() (
-	chan elev_struct.Elevator,
+	chan types.Elevator,
 	chan [config.N_FLOORS][config.N_BUTTONS - 1]bool,
 	chan [config.N_FLOORS]bool,
 	chan elevio.ButtonEvent,
 ) {
-	return make(chan elev_struct.Elevator, config.BUFFER_SIZE),
+	return make(chan types.Elevator, config.BUFFER_SIZE),
 		make(chan [config.N_FLOORS][config.N_BUTTONS - 1]bool, config.BUFFER_SIZE),
 		make(chan [config.N_FLOORS]bool, config.BUFFER_SIZE),
 		make(chan elevio.ButtonEvent, config.BUFFER_SIZE)

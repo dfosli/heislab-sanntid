@@ -171,7 +171,7 @@ func resetHallOrders(
 
 func applyLocalElevatorUpdate(
 	localID string,
-	localElevator elev_struct.Elevator,
+	localElevator types.Elevator,
 	availableElevators map[string]bool,
 	allHallOrders AllHallOrders,
 	allElevators types.AllElevators,
@@ -213,7 +213,7 @@ func applyRemoteElevatorUpdate(
 
 	allElevators[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.Elevator
 	allHallOrders[remoteElevatorMsg.Elevator.ID] = remoteElevatorMsg.HallOrders
-	allHallOrders[localID] = UpdateLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
+	allHallOrders[localID] = SyncLocalHallOrders(allHallOrders[localID], remoteElevatorMsg.HallOrders)
 }
 
 func runOrderManager(
