@@ -1,11 +1,11 @@
 package state_machine
 
 import (
-	elevio "Driver-go"
+	"elevio"
 	"heislab-sanntid/config"
 	"heislab-sanntid/elevator/elev_struct"
 	"heislab-sanntid/elevator/requests"
-	
+
 	"time"
 )
 
